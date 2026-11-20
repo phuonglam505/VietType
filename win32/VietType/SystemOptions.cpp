@@ -74,7 +74,9 @@ UpdateResult fetchRelease()
     }
 
     const auto release = winrt::Windows::Data::Json::JsonObject::Parse(winrt::to_hstring(body));
-    const auto latest = parseReleaseVersion(winrt::to_string(release.GetNamedString(L"tag_name")));
+    const auto latest = parseGitHubReleaseVersion(
+        winrt::to_string(release.GetNamedString(L"tag_name")),
+        winrt::to_string(release.GetNamedString(L"name", L"")));
     const auto installed = parseReleaseVersion(winrt::to_string(VIETTYPE_VERSION_DISPLAY));
     if (!latest || !installed) return UpdateResult::unavailable;
     return *latest > *installed ? UpdateResult::newer : UpdateResult::current;

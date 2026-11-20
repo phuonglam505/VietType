@@ -24,4 +24,16 @@ inline std::optional<ReleaseVersion> parseReleaseVersion(std::string_view tag)
     }
     return version;
 }
+
+inline std::optional<ReleaseVersion> parseGitHubReleaseVersion(std::string_view tag,
+                                                               std::string_view title)
+{
+    if (const auto version = parseReleaseVersion(tag)) return version;
+
+    // The first public release used a fixed tag and a versioned title.
+    constexpr std::string_view prefix = "VietType ";
+    if (tag != "viettype" || title.substr(0, prefix.size()) != prefix) return {};
+    title.remove_prefix(prefix.size());
+    return parseReleaseVersion(title);
+}
 }

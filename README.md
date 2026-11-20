@@ -26,12 +26,12 @@ Chọn kiểu gõ, bảng mã, chế độ Việt/Anh và phím chuyển ở đ�
 
 Trong tab **Hệ thống**, chọn **Kiểm tra bản mới** hoặc bật **Kiểm tra bản mới khi khởi động**. VietType đọc Release chính thức mới nhất của kho [phuonglam505/VietType](https://github.com/phuonglam505/VietType/releases). Khi có phiên bản cao hơn, bạn có thể mở trang Release để tải. Việc kiểm tra chạy trong nền.
 
-## Phát hành bản 0.2.7
+## Phát hành bản 0.2.8
 
 1. Đưa nội dung thư mục mã nguồn này, gồm `LICENSE` và `CMakeLists.txt`, lên thư mục gốc của nhánh `main`.
-2. Tạo GitHub Release từ đúng commit vừa tải lên, với tag `v0.2.7`.
+2. Tạo GitHub Release từ đúng commit vừa tải lên, với tag `v0.2.8`.
 3. Đính kèm `VietType.exe`, rồi công bố Release chính thức. Giữ liên kết tải mã nguồn của cùng tag ngay trên trang Release.
 
-Với bản tiếp theo, tăng phiên bản trong `CMakeLists.txt` và phần thông tin phiên bản trong `win32/VietType/VietType.rc`, rồi build và tạo Release với tag tương ứng, ví dụ `v0.2.8`. GitHub Releases dùng tag dạng `vMAJOR.MINOR.PATCH` để VietType so sánh phiên bản.
+Với bản tiếp theo, tăng phiên bản trong `CMakeLists.txt` và phần thông tin phiên bản trong `win32/VietType/VietType.rc`, rồi build và tạo Release với tag tương ứng, ví dụ `v0.2.9`. Dùng tag dạng `vMAJOR.MINOR.PATCH` để VietType so sánh phiên bản. Bản phát hành đầu dùng tag `viettype` được đọc theo tiêu đề `VietType v0.2.7`.
 
 VietType là bản sửa đổi từ OpenKey, được bổ sung giao diện Windows và kiểm tra cập nhật từ GitHub. Bản 0.2.7 đổi tên dự án và các tệp nguồn ngày 20/11/2026 theo giấy phép GPLv3. Xem `LICENSE` và các thông báo trong mã nguồn.
