@@ -1,6 +1,18 @@
 # VietType
 
-Bộ gõ tiếng Việt độc lập cho Windows x64. Giao diện VietType cung cấp chuyển Việt/Anh, Telex, VNI, Simple Telex, bảng mã, gõ tắt và chuyển mã. Dùng **Alt + Z** để chuyển Việt/Anh. Chọn **Đóng** để thu về khay hệ thống hoặc **Thoát** để dừng bộ gõ.
+VietType là bộ gõ tiếng Việt gọn nhẹ cho Windows 64-bit. Tải `VietType.exe` từ [GitHub Releases](https://github.com/phuonglam505/VietType/releases/latest) rồi mở trực tiếp, không cần cài đặt.
+
+## Tính năng chính
+
+- **Kiểu gõ và bảng mã** — Telex, VNI, Simple Telex, Unicode, Unicode tổ hợp, TCVN3 (ABC), VNI Windows và Windows CP1258.
+- **Chuyển Việt/Anh** — Dùng `Alt + Z` theo mặc định hoặc bấm biểu tượng V đỏ và E xanh ở khay hệ thống. Có thể đổi phím chuyển và bật âm báo.
+- **Hỗ trợ khi gõ** — Kiểm tra chính tả, khôi phục từ gõ sai, tùy chọn cách đặt dấu, viết hoa đầu câu và ghi nhớ chế độ gõ, bảng mã theo từng ứng dụng.
+- **Gõ tắt và chuyển mã** — Quản lý, nhập và xuất bảng gõ tắt. Chuyển bảng mã cho văn bản trong clipboard, đổi kiểu chữ hoặc bỏ dấu.
+- **Tích hợp Windows** — Menu khay hệ thống, tùy chọn khởi động cùng Windows và kiểm tra bản mới từ GitHub Releases.
+
+Chọn **Đóng** để thu cửa sổ về khay hệ thống hoặc **Thoát** để dừng bộ gõ. Trước khi mở bản mới, hãy thoát bản cũ ở khay.
+
+## Mã nguồn
 
 - `engine/` chứa mã xử lý tiếng Việt, gõ tắt và chuyển mã của VietType.
 - `win32/VietType/MainWindow.cpp` và tài nguyên `IDD_VIETTYPE` định nghĩa cửa sổ chính.
