@@ -1358,9 +1358,17 @@ void vEnglishMode(const vKeyEventState& state, const Uint16& data, const bool& i
 
 void vKeyHandleEvent(const vKeyEvent& event,
                      const vKeyEventState& state,
-                     const Uint16& data,
+                     const Uint16& keyCode,
                      const Uint8& capsStatus,
                      const bool& otherControlKey) {
+    Uint16 data = keyCode;
+#if _WIN32
+    if (event == vKeyEvent::Keyboard && !otherControlKey &&
+        keyCode >= VK_NUMPAD0 && keyCode <= VK_NUMPAD9) {
+        const auto digit = static_cast<Uint16>(KEY_0 + keyCode - VK_NUMPAD0);
+        if (usesVniKeys(digit)) data = digit;
+    }
+#endif
     _isCaps = (capsStatus == 1 || //shift
                capsStatus == 2); //caps lock
     if ((IS_NUMBER_KEY(data) && capsStatus == 1)

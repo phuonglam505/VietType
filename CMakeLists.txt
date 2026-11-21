@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.21)
-project(VietType VERSION 0.2.18 LANGUAGES CXX RC)
+project(VietType VERSION 0.2.19 LANGUAGES CXX RC)
 set(win win32/VietType)
 add_executable(VietType WIN32
     ${win}/main.cpp ${win}/AppDelegate.cpp ${win}/MainWindow.cpp ${win}/SystemOptions.cpp ${win}/SelfUpdate.cpp

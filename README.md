@@ -115,4 +115,4 @@ cmake --build build --config Release
 
 ### Phát hành trên GitHub
 
-Cập nhật số phiên bản trong `CMakeLists.txt` và `win32/VietType/VietType.rc` trước khi build. Tạo Release chính thức từ đúng commit bằng tag `vX.Y.Z`, ví dụ `v0.2.18`, và đính kèm tệp Windows x64 với tên `VietType.exe`. Giữ mã nguồn và giấy phép trong cùng tag.
+Cập nhật số phiên bản trong `CMakeLists.txt` và `win32/VietType/VietType.rc` trước khi build. Tạo Release chính thức từ đúng commit bằng tag `vX.Y.Z`, ví dụ `v0.2.19`, và đính kèm tệp Windows x64 với tên `VietType.exe`. Giữ mã nguồn và giấy phép trong cùng tag.
