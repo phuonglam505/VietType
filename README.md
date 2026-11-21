@@ -46,4 +46,4 @@ Trong tab **Hệ thống**, chọn **Kiểm tra bản mới** hoặc bật **Ki�
 3. Đính kèm `VietType.exe`, rồi công bố Release chính thức. Giữ liên kết tải mã nguồn của cùng tag ngay trên trang Release.
 
 
-VietType là hoạt động giải trí của tác giả và là bản sửa đổi từ OpenKey và UniKey, được bổ sung giao diện Windows và kiểm tra cập nhật từ GitHub. Bản 0.2.12 đổi tên dự án và các tệp nguồn ngày 20/11/2026 theo giấy phép GPLv3. Xem `LICENSE` và các thông báo trong mã nguồn.
+VietType là hoạt động giải trí của tác giả và là bản sửa đổi từ [OpenKey](https://open-key.org/) và [UniKey](https://www.unikey.org/), được bổ sung giao diện Windows và kiểm tra cập nhật từ GitHub. Bản 0.2.12 đổi tên dự án và các tệp nguồn ngày 20/11/2026 theo giấy phép GPLv3. Xem `LICENSE` và các thông báo trong mã nguồn.
