@@ -1,9 +1,9 @@
 cmake_minimum_required(VERSION 3.21)
-project(VietType VERSION 2026.11.1 LANGUAGES CXX RC)
+project(VietType VERSION 0.2.18 LANGUAGES CXX RC)
 set(win win32/VietType)
 add_executable(VietType WIN32
     ${win}/main.cpp ${win}/AppDelegate.cpp ${win}/MainWindow.cpp ${win}/SystemOptions.cpp ${win}/SelfUpdate.cpp
-    ${win}/BaseDialog.cpp ${win}/UiLanguage.cpp ${win}/ConvertToolDialog.cpp
+    ${win}/BaseDialog.cpp ${win}/ConvertToolDialog.cpp
     ${win}/MacroDialog.cpp ${win}/VietType.cpp
     ${win}/VietTypeHelper.cpp ${win}/VietTypeManager.cpp ${win}/SystemTrayHelper.cpp
     ${win}/stdafx.cpp ${win}/VietType.rc

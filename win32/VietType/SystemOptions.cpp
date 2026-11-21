@@ -1,4 +1,3 @@
-#include "UiLanguage.h"
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include <shlobj.h>
 #include <winhttp.h>
@@ -237,7 +236,7 @@ void installAvailableUpdate(HWND parent, HWND button, HWND status)
 {
     if (updateInProgress || !availableUpdate) return;
     EnableWindow(button, FALSE);
-    SetWindowText(status, viettype::tr(L"Đang tải và xác minh bản cập nhật…"));
+    SetWindowText(status, L"Đang tải và xác minh bản cập nhật…");
     beginUpdateDownload(parent, *availableUpdate);
 }
 
@@ -250,17 +249,17 @@ void onUpdateResult(HWND parent, HWND button, HWND status)
     }
     if (!notice) return;
     updateInProgress = false;
-    const auto caption = viettype::tr(L"Cập nhật VietType");
+    constexpr auto caption = L"Cập nhật VietType";
     switch (notice->result) {
     case UpdateResult::newer: {
         availableUpdate = std::move(notice->asset);
         const auto version = availableUpdate->version;
-        const auto message = std::wstring(viettype::tr(L"Đã có VietType ")) + updateVersionLabel(version) + L".";
+        const auto message = L"Đã có VietType " + updateVersionLabel(version) + L".";
         SetWindowText(status, message.c_str());
         EnableWindow(button, TRUE);
         if (notifiedVersion != version) {
             notifiedVersion = version;
-            const auto details = message + viettype::tr(L" Mở tab Thông tin và chọn Cập nhật để cài đặt.");
+            const auto details = message + L" Mở tab Thông tin và chọn Cập nhật để cài đặt.";
             MessageBox(parent, details.c_str(), caption, MB_OK | MB_ICONINFORMATION);
         }
         return;
@@ -272,33 +271,33 @@ void onUpdateResult(HWND parent, HWND button, HWND status)
             return;
         }
         EnableWindow(button, TRUE);
-        SetWindowText(status, viettype::tr(L"Cài đặt chưa thành công."));
+        SetWindowText(status, L"Cài đặt chưa thành công.");
         MessageBox(parent, error.c_str(), caption, MB_OK | MB_ICONERROR);
         return;
     }
     case UpdateResult::downloadFailed:
         EnableWindow(button, TRUE);
-        SetWindowText(status, viettype::tr(L"Tải hoặc xác minh bản cập nhật chưa thành công."));
-        MessageBox(parent, viettype::tr(L"Không tải hoặc xác minh được tệp cập nhật. Hãy thử lại sau."),
+        SetWindowText(status, L"Tải hoặc xác minh bản cập nhật chưa thành công.");
+        MessageBox(parent, L"Không tải hoặc xác minh được tệp cập nhật. Hãy thử lại sau.",
                    caption, MB_OK | MB_ICONWARNING);
         return;
     case UpdateResult::noAsset:
         availableUpdate.reset();
-        SetWindowText(status, viettype::tr(L"Bản mới trên GitHub chưa có tệp cập nhật hợp lệ."));
+        SetWindowText(status, L"Bản mới trên GitHub chưa có tệp cập nhật hợp lệ.");
         break;
     case UpdateResult::current:
         availableUpdate.reset();
-        SetWindowText(status, viettype::tr(L"Bạn đang dùng bản mới nhất."));
+        SetWindowText(status, L"Bạn đang dùng bản mới nhất.");
         break;
     case UpdateResult::noRelease:
         availableUpdate.reset();
-        SetWindowText(status, viettype::tr(L"Chưa tìm thấy bản phát hành trên GitHub."));
+        SetWindowText(status, L"Chưa tìm thấy bản phát hành trên GitHub.");
         break;
     case UpdateResult::unrecognizedVersion:
-        SetWindowText(status, viettype::tr(L"Chưa đọc được số phiên bản trên GitHub."));
+        SetWindowText(status, L"Chưa đọc được số phiên bản trên GitHub.");
         break;
     case UpdateResult::unavailable:
-        SetWindowText(status, viettype::tr(L"Chưa kiểm tra được bản mới trên GitHub."));
+        SetWindowText(status, L"Chưa kiểm tra được bản mới trên GitHub.");
         break;
     }
     EnableWindow(button, availableUpdate.has_value());

@@ -1,4 +1,3 @@
-#include "UiLanguage.h"
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include <algorithm>
 #include <array>
@@ -174,7 +173,7 @@ std::vector<BYTE> downloadUpdate(const UpdateAsset& asset)
 
 bool replaceAndRestart(const UpdateAsset& asset, const std::vector<BYTE>& payload, std::wstring& error)
 {
-    error = viettype::tr(L"Không thể thay tệp VietType.exe. Kiểm tra quyền ghi vào thư mục chứa ứng dụng và thử lại.");
+    error = L"Không thể thay tệp VietType.exe. Kiểm tra quyền ghi vào thư mục chứa ứng dụng và thử lại.";
     if (payload.size() > sizeLimit || !validUpdateAsset(asset) ||
         !validBinary(payload) || !checkHash(payload, asset.digest)) return false;
 
@@ -195,7 +194,7 @@ bool replaceAndRestart(const UpdateAsset& asset, const std::vector<BYTE>& payloa
                   count == payload.size() && FlushFileBuffers(file.value);
     }
     if (!written || !matchesVersion(staging, asset.version)) {
-        if (written) error = viettype::tr(L"Phiên bản bên trong tệp tải về không khớp với bản phát hành GitHub.");
+        if (written) error = L"Phiên bản bên trong tệp tải về không khớp với bản phát hành GitHub.";
         DeleteFileW(staging.c_str());
         return false;
     }
@@ -206,7 +205,7 @@ bool replaceAndRestart(const UpdateAsset& asset, const std::vector<BYTE>& payloa
     if (MoveFileExW(staging.c_str(), target.c_str(), MOVEFILE_WRITE_THROUGH) && restart(target, id)) return true;
 
     if (!MoveFileExW(backup.c_str(), target.c_str(), MOVEFILE_REPLACE_EXISTING | MOVEFILE_WRITE_THROUGH)) {
-        error = std::wstring(viettype::tr(L"Không thể mở bản mới hoặc khôi phục tự động. Tệp VietType cũ vẫn nằm ở:\n")) + backup;
+        error = L"Không thể mở bản mới hoặc khôi phục tự động. Tệp VietType cũ vẫn nằm ở:\n" + backup;
     }
     DeleteFileW(staging.c_str());
     return false;

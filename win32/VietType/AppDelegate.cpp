@@ -1,4 +1,3 @@
-#include "UiLanguage.h"
 /*----------------------------------------------------------
 OpenKey
 
@@ -75,8 +74,8 @@ int AppDelegate::run(HINSTANCE hInstance) {
             PostMessage(previousInstance, showVietTypeWindow, 0, 0);
         } else {
             MessageBox(nullptr,
-                viettype::tr(L"Một bản VietType khác đang chạy. Nhấp phải vào biểu tượng V/E ở khay hệ thống, "
-                L"chọn Thoát, rồi mở lại tệp này để xem cửa sổ đầy đủ."),
+                L"Một bản VietType khác đang chạy. Nhấp phải vào biểu tượng V/E ở khay hệ thống, "
+                L"chọn Thoát, rồi mở lại tệp này để xem cửa sổ đầy đủ.",
                 L"VietType", MB_OK | MB_ICONINFORMATION);
         }
 		return 0;
@@ -87,7 +86,7 @@ int AppDelegate::run(HINSTANCE hInstance) {
     if (!VietTypeManager::initEngine()) {
         VietTypeManager::freeEngine();
         SystemTrayHelper::removeSystemTray();
-        MessageBox(nullptr, viettype::tr(L"Không khởi tạo được bộ gõ. VietType chưa nhận phím."),
+        MessageBox(nullptr, L"Không khởi tạo được bộ gõ. VietType chưa nhận phím.",
                    L"VietType", MB_OK | MB_ICONERROR);
         return 1;
     }
@@ -98,7 +97,7 @@ int AppDelegate::run(HINSTANCE hInstance) {
     mainWindow = &panel;
     if (trayReady && panel.getHwnd()) viettype::confirmUpdateReady();
     if (!trayReady) {
-        MessageBox(panel.getHwnd(), viettype::tr(L"Không tạo được biểu tượng khay. Bản dự phòng (nếu có) vẫn được giữ."),
+        MessageBox(panel.getHwnd(), L"Không tạo được biểu tượng khay. Bản dự phòng (nếu có) vẫn được giữ.",
                    L"VietType", MB_OK | MB_ICONWARNING);
     }
     if (viettype::checkUpdatesAtLaunch()) {
@@ -156,12 +155,6 @@ void AppDelegate::onToggleVietnamese() {
 	SystemTrayHelper::updateData();
 }
 
-void AppDelegate::onUiLanguageChanged() {
-    if (macroDialog) viettype::localizeDialog(macroDialog->getHwnd());
-    if (convertDialog) static_cast<ConvertToolDialog*>(convertDialog)->refreshLanguage();
-    SystemTrayHelper::refreshLanguage();
-}
-
 void AppDelegate::onMacroTable() {
 	if (macroDialog == NULL) {
 		macroDialog = new MacroDialog(hInstance, IDD_DIALOG_MACRO);
@@ -186,7 +179,7 @@ void AppDelegate::onQuickConvert() {
 		if (!convertToolDontAlertWhenCompleted) {
 			TCHAR msg[256];
 			LoadString(hInstance, IDS_STRING_CONVERT_COMPLETED, msg, 256);
-			MessageBox(NULL, viettype::tr(msg), _T("VietType"), MB_OK);
+			MessageBox(NULL, msg, _T("VietType"), MB_OK);
 		}
 	}
 }

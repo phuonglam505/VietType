@@ -20,7 +20,6 @@ public:
     static HWND findRunningWindow();
 	static bool createSystemTrayIcon(const HINSTANCE& hIns);
 	static void updateData();
-    static void refreshLanguage();
 	static void removeSystemTray();
 };
 

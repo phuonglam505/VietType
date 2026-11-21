@@ -16,7 +16,6 @@ private:
     static INT_PTR CALLBACK licenseProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam);
     INT_PTR eventProc(HWND window, UINT message, WPARAM wParam, LPARAM lParam) override;
     void init();
-    void refreshLanguage();
     void restoreDefaults();
     void changeHotkey(int control);
     HWND item(int id) const;

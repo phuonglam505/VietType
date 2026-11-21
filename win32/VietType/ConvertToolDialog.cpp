@@ -1,4 +1,3 @@
-#include "UiLanguage.h"
 /*----------------------------------------------------------
 OpenKey
 
@@ -73,7 +72,11 @@ void ConvertToolDialog::initDialog() {
 	comboboxSource = GetDlgItem(hDlg, IDC_COMBO_TABLE_CODE_SRC);
 	comboboxDest = GetDlgItem(hDlg, IDC_COMBO_TABLE_CODE_DST);
 
-
+	const auto tableCode = clipboardEncodingNames();
+	for (int i = 0; i < tableCode.size(); i++) {
+		SendMessage(comboboxSource, CB_ADDSTRING, i, reinterpret_cast<LPARAM>(tableCode[i]));
+		SendMessage(comboboxDest, CB_ADDSTRING, i, reinterpret_cast<LPARAM>(tableCode[i]));
+	}
 
 	checkAllCaps = GetDlgItem(hDlg, IDC_CHECK_All_CAPS);
 	checkNonAllCaps = GetDlgItem(hDlg, IDC_CHECK_NON_ALL_CAPS);
@@ -93,20 +96,7 @@ void ConvertToolDialog::initDialog() {
 	SendDlgItemMessage(hDlg, IDOK, BM_SETIMAGE, IMAGE_ICON, (LPARAM)LoadIcon(hInstance, MAKEINTRESOURCEW(IDI_ICON_OK_BUTTON)));
 	SendDlgItemMessage(hDlg, IDC_BUTTON_CONVERT_BUTTON, BM_SETIMAGE, IMAGE_ICON, (LPARAM)LoadIcon(hInstance, MAKEINTRESOURCEW(IDI_ICON_START_CONVERT)));
 
-    refreshLanguage();
-}
-
-void ConvertToolDialog::refreshLanguage()
-{
-    viettype::localizeDialog(hDlg);
-    SendMessage(comboboxSource, CB_RESETCONTENT, 0, 0);
-    SendMessage(comboboxDest, CB_RESETCONTENT, 0, 0);
-    for (const auto* encoding : clipboardEncodingNames()) {
-        const auto label = reinterpret_cast<LPARAM>(viettype::tr(encoding));
-        SendMessage(comboboxSource, CB_ADDSTRING, 0, label);
-        SendMessage(comboboxDest, CB_ADDSTRING, 0, label);
-    }
-    fillData();
+	fillData();
 }
 
 void ConvertToolDialog::fillData() {
@@ -249,7 +239,7 @@ void ConvertToolDialog::onConvertButton() {
 		if (!convertToolDontAlertWhenCompleted) {
 			TCHAR msg[256];
 			LoadString(hInstance, IDS_STRING_CONVERT_COMPLETED, msg, 256);
-			MessageBox(this->hDlg, viettype::tr(msg), _T("VietType"), MB_OK);
+			MessageBox(this->hDlg, msg, _T("VietType"), MB_OK);
 		}
 	}
 }

@@ -2,7 +2,6 @@
 #include "MainWindow.h"
 #include "AppDelegate.h"
 #include "SystemOptions.h"
-#include "UiLanguage.h"
 #include <uxtheme.h>
 
 namespace {
@@ -50,7 +49,6 @@ constexpr HotkeyFlag hotkeyFlags[] = {
 };
 
 constexpr unsigned noPrimaryKey = 0xfe;
-constexpr LPCWSTR pageLabels[] = {L"Bộ gõ", L"Gõ tắt", L"Hệ thống", L"Thông tin"};
 
 void setToggle(const Toggle& option, int value)
 {
@@ -60,7 +58,7 @@ void setToggle(const Toggle& option, int value)
 
 void reportWindowsError(HWND parent)
 {
-    MessageBox(parent, viettype::tr(L"Windows không lưu được tùy chọn này."),
+    MessageBox(parent, L"Windows không lưu được tùy chọn này.",
                L"VietType", MB_OK | MB_ICONWARNING);
 }
 }
@@ -82,12 +80,12 @@ HWND MainWindow::item(int id) const
 void MainWindow::init()
 {
     constexpr int resources[] = {IDD_VT_PAGE_INPUT, IDD_VT_PAGE_MACROS, IDD_VT_PAGE_WINDOWS, IDD_VT_PAGE_INFO};
-
+    constexpr LPCWSTR labels[] = {L"Bộ gõ", L"Gõ tắt", L"Hệ thống", L"Thông tin"};
     const auto tabs = item(IDC_PREF_NAV);
     for (size_t i = 0; i < pages_.size(); ++i) {
         TCITEM tab{};
         tab.mask = TCIF_TEXT;
-        tab.pszText = const_cast<LPWSTR>(viettype::tr(pageLabels[i]));
+        tab.pszText = const_cast<LPWSTR>(labels[i]);
         TabCtrl_InsertItem(tabs, i, &tab);
     }
     RECT location{};
@@ -103,32 +101,15 @@ void MainWindow::init()
     }
     TabCtrl_SetCurSel(tabs, 0);
     ShowWindow(pages_[0], SW_SHOWNA);
-    refreshLanguage();
-}
-
-void MainWindow::refreshLanguage()
-{
-    viettype::localizeDialog(hDlg);
-    const auto tabs = item(IDC_PREF_NAV);
-    for (size_t i = 0; i < pages_.size(); ++i) {
-        TCITEM tab{};
-        tab.mask = TCIF_TEXT;
-        tab.pszText = const_cast<LPWSTR>(viettype::tr(pageLabels[i]));
-        TabCtrl_SetItem(tabs, i, &tab);
-    }
-    for (int id : {IDC_VT_METHOD, IDC_VT_CHARSET, IDC_PREF_KEYCODE}) {
-        SendMessage(item(id), CB_RESETCONTENT, 0, 0);
-    }
-    CheckDlgButton(pages_[2], IDC_PREF_UI_LANGUAGE, viettype::isUiEnglish() ? BST_CHECKED : BST_UNCHECKED);
 
     const auto populate = [this](int id, const std::vector<LPCTSTR>& entries) {
         for (const auto* label : entries) {
-            SendMessage(item(id), CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(viettype::tr(label)));
+            SendMessage(item(id), CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(label));
         }
     };
     const HWND method = item(IDC_VT_METHOD);
     for (const auto& entry : VietTypeManager::getInputType()) {
-        const auto row = SendMessage(method, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(viettype::tr(entry.label)));
+        const auto row = SendMessage(method, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(entry.label));
         if (row >= 0) SendMessage(method, CB_SETITEMDATA, row, entry.id);
     }
     populate(IDC_VT_CHARSET, VietTypeManager::getTableCode());
@@ -138,7 +119,7 @@ void MainWindow::refreshLanguage()
 
     const auto keys = item(IDC_PREF_KEYCODE);
     const auto addKey = [keys](LPCWSTR label, unsigned key) {
-        const LRESULT row = SendMessage(keys, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(viettype::tr(label)));
+        const LRESULT row = SendMessage(keys, CB_ADDSTRING, 0, reinterpret_cast<LPARAM>(label));
         if (row >= 0) SendMessage(keys, CB_SETITEMDATA, row, key);
     };
     addKey(L"Chỉ dùng phím kết hợp", noPrimaryKey);
@@ -157,15 +138,15 @@ void MainWindow::refreshLanguage()
         if (SendMessage(keys, CB_GETITEMDATA, i, 0) == savedKey) listed = true;
     }
     if (!listed) {
-        const auto label = std::wstring(viettype::tr(L"Phím đã lưu (")) + std::to_wstring(savedKey) + L")";
+        const auto label = L"Phím đã lưu (" + std::to_wstring(savedKey) + L")";
         addKey(label.c_str(), savedKey);
     }
 
-
-    using viettype::tr;
-    const auto info = std::wstring(L"VietType " VIETTYPE_VERSION_DISPLAY L" ") + tr(L"cho Windows x64") +
-        L"\r\n" + tr(L"Có sử dụng mã nguồn OpenKey.") + L"\r\n" + tr(L"Phát triển theo giấy phép GNU GPL v3.");
-    SetWindowText(item(IDC_PREF_INFO_TEXT), info.c_str());
+    SetWindowText(item(IDC_PREF_INFO_TEXT),
+        L"VietType " VIETTYPE_VERSION_DISPLAY L" cho Windows x64\r\n\r\n"
+        L"Bộ gõ tiếng Việt VietType\r\n"
+        L"Có sử dụng mã nguồn OpenKey.\r\n"
+        L"Phát triển theo giấy phép GNU GPL v3.");
     fillData();
 }
 
@@ -243,7 +224,7 @@ void MainWindow::changeHotkey(int control)
 
 void MainWindow::restoreDefaults()
 {
-    if (MessageBox(hDlg, viettype::tr(L"Khôi phục tùy chọn mặc định của VietType?"), L"VietType",
+    if (MessageBox(hDlg, L"Khôi phục tùy chọn mặc định của VietType?", L"VietType",
                    MB_YESNO | MB_ICONQUESTION | MB_DEFBUTTON2) != IDYES) return;
     for (const auto& option : toggles) setToggle(option, option.defaultValue);
     const bool startupReset = viettype::setStartsWithWindows(false);
@@ -292,13 +273,6 @@ INT_PTR MainWindow::eventProc(HWND window, UINT message, WPARAM wParam, LPARAM l
         if (index == CB_ERR) return TRUE;
         if (id == IDC_VT_METHOD) controller_.onInputType(static_cast<int>(SendMessage(item(id), CB_GETITEMDATA, index, 0)));
         else controller_.onTableCode(index);
-        return TRUE;
-    }
-    if (id == IDC_PREF_UI_LANGUAGE && HIWORD(wParam) == BN_CLICKED) {
-        const bool english = SendMessage(item(id), BM_GETCHECK, 0, 0) == BST_CHECKED;
-        viettype::setUiEnglish(english);
-        refreshLanguage();
-        controller_.onUiLanguageChanged();
         return TRUE;
     }
     if (id == IDC_PREF_KEYCODE && HIWORD(wParam) == CBN_SELCHANGE) {
@@ -353,7 +327,6 @@ INT_PTR CALLBACK MainWindow::pageProc(HWND page, UINT message, WPARAM wParam, LP
 INT_PTR CALLBACK MainWindow::licenseProc(HWND window, UINT message, WPARAM wParam, LPARAM)
 {
     if (message == WM_INITDIALOG) {
-        viettype::localizeDialog(window);
         SetFocus(GetDlgItem(window, IDCANCEL));
         const auto instance = GetModuleHandle(nullptr);
         const auto resource = FindResource(instance, MAKEINTRESOURCE(IDR_VT_LICENSE), RT_RCDATA);

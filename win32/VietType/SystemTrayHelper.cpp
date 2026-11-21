@@ -10,7 +10,6 @@ redistribute your new version, it MUST be open source.
 -----------------------------------------------------------*/
 #include "SystemTrayHelper.h"
 #include "AppDelegate.h"
-#include "UiLanguage.h"
 #include <oleacc.h>
 #include <utility>
 
@@ -90,7 +89,7 @@ static void attachTrayLabels(HMENU menu) {
         if (!GetMenuItemInfo(menu, index, TRUE, &item) || (item.fType & MFT_SEPARATOR)) continue;
         const UINT id = item.hSubMenu ? POPUP_OTHER_CODES : item.wID;
         auto& label = trayLabels[id];
-        label.set(viettype::tr(item.hSubMenu ? L"Bảng mã khác" : menuData.at(id)));
+        label.set(item.hSubMenu ? L"Bảng mã khác" : menuData.at(id));
         item.fMask = MIIM_FTYPE | MIIM_DATA;
         item.fType |= MFT_OWNERDRAW;
         item.dwItemData = reinterpret_cast<ULONG_PTR>(&label.accessibility);
@@ -187,7 +186,7 @@ LRESULT CALLBACK WndProc(HWND hWnd, UINT message, WPARAM wParam, LPARAM lParam) 
             auto warning = nid;
             warning.uFlags = NIF_INFO;
             wcscpy_s(warning.szInfoTitle, L"VietType");
-            wcscpy_s(warning.szInfo, viettype::tr(L"Không gửi được chữ tiếng Việt. VietType đã chuyển tiếp phím gốc."));
+            wcscpy_s(warning.szInfo, L"Không gửi được chữ tiếng Việt. VietType đã chuyển tiếp phím gốc.");
             warning.dwInfoFlags = NIIF_WARNING;
             Shell_NotifyIcon(NIM_MODIFY, &warning);
         }
@@ -387,18 +386,13 @@ static void loadTrayIcon() {
 	int icon = 0;
 	if (vLanguage) {
 		icon = vUseGrayIcon ? IDI_ICON_STATUS_VIET_10 : IDI_ICON_STATUS_VIET;
-		wcscpy_s(nid.szTip, viettype::tr(L"Bấm vào đây để tắt gõ Tiếng Việt"));
+		LoadString(GetModuleHandle(0), IDS_TRAY_TITLE_2, nid.szTip, 128);
 	}
 	else {
 		icon = vUseGrayIcon ? IDI_ICON_STATUS_ENG_10 : IDI_ICON_STATUS_ENG;
-		wcscpy_s(nid.szTip, viettype::tr(L"Bấm vào đây để bật gõ Tiếng Việt"));
+		LoadString(GetModuleHandle(0), IDS_TRAY_TITLE, nid.szTip, 128);
 	}
 	nid.hIcon = LoadIcon(GetModuleHandle(0), MAKEINTRESOURCE(icon));
-}
-
-void SystemTrayHelper::refreshLanguage() {
-    if (popupMenu) attachTrayLabels(popupMenu);
-    updateData();
 }
 
 void SystemTrayHelper::updateData() {
@@ -458,7 +452,7 @@ void SystemTrayHelper::updateData() {
 			hotkey += (wchar_t)k;
 	}
 
-	wstring hotKeyString = viettype::tr(menuData[POPUP_QUICK_CONVERT]);
+	wstring hotKeyString = menuData[POPUP_QUICK_CONVERT];
 	if (hasAdd) {
 		hotKeyString += L" - [";
 		hotKeyString += hotkey;

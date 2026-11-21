@@ -1,6 +1,6 @@
 # VietType
 
-VietType 2026 là bộ gõ tiếng Việt cho Windows 64-bit, chạy trực tiếp bằng tệp `VietType.exe`. Ứng dụng có sáu kiểu gõ, 18 bảng mã, gõ tắt, chuyển mã qua clipboard và cập nhật từ GitHub.
+VietType là bộ gõ tiếng Việt cho Windows 64-bit, chạy trực tiếp bằng tệp `VietType.exe`. Ứng dụng có sáu kiểu gõ, 18 bảng mã, gõ tắt, chuyển mã qua clipboard và cập nhật từ GitHub.
 
 [Tải VietType cho Windows x64](https://github.com/phuonglam505/VietType/releases/latest)
 
@@ -75,12 +75,6 @@ Có thể bật gõ tắt trong chế độ tiếng Anh và đổi kiểu viết
 
 Công cụ còn hỗ trợ chuyển chữ HOA, chữ thường, viết hoa đầu câu, viết hoa từng từ, bỏ dấu tiếng Việt và thông báo sau khi chuyển. Đặt **Phím chuyển mã nhanh** trong công cụ, hoặc chọn **Chuyển mã nhanh** ở menu khay để dùng lại cấu hình vừa lưu. Các bảng mã mở rộng được chuyển qua văn bản thuần trong clipboard.
 
-## Ngôn ngữ giao diện
-
-Trong tab **Hệ thống**, tích **English** để đổi ngay giao diện sang tiếng Anh. Bỏ tích để trở về tiếng Việt. Tiếng Việt là mặc định. Lựa chọn được lưu riêng với chế độ gõ Việt/Anh.
-
-![Giao diện tiếng Anh của VietType 2026.11.1 với nhãn Input method trên một dòng](docs/images/viettype-main-english.png)
-
 ## Tùy chọn Windows và menu khay
 
 Tab **Hệ thống** có các tùy chọn:
@@ -121,4 +115,4 @@ cmake --build build --config Release
 
 ### Phát hành trên GitHub
 
-Cập nhật số phiên bản trong `CMakeLists.txt` và `win32/VietType/VietType.rc` trước khi build. Tạo Release chính thức từ đúng commit bằng tag `vX.Y.Z`, ví dụ `v2026.11.1`, và đính kèm tệp Windows x64 với tên `VietType.exe`. Giữ mã nguồn và giấy phép trong cùng tag.
+Cập nhật số phiên bản trong `CMakeLists.txt` và `win32/VietType/VietType.rc` trước khi build. Tạo Release chính thức từ đúng commit bằng tag `vX.Y.Z`, ví dụ `v0.2.18`, và đính kèm tệp Windows x64 với tên `VietType.exe`. Giữ mã nguồn và giấy phép trong cùng tag.

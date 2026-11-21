@@ -36,7 +36,6 @@ public: //event
 
 
 	void onToggleVietnamese();
-    void onUiLanguageChanged();
 
 
 
