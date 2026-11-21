@@ -54,6 +54,10 @@ extern wchar_t _logBuffer[1024];
 #define APP_GET_DATA(KEY, DEFAULT_VAL) KEY = VietTypeHelper::getRegInt(_T(#KEY), DEFAULT_VAL)
 
 #define APP_CLASS _T("VietTypeVietnameseInputMethod")
+constexpr int defaultSwitchHotkey = static_cast<int>(0xFE0009FEu); // Ctrl + Shift, no primary key.
+constexpr UINT inputDeliveryFailed = WM_APP + 51;
+constexpr UINT inputModeChanged = WM_APP + 52;
+constexpr UINT quickConvertRequested = WM_APP + 53;
 constexpr UINT showVietTypeWindow = WM_USER + 2019;
 constexpr UINT queryVietTypeBuild = WM_USER + 2020;
 

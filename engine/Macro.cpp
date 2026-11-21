@@ -43,7 +43,7 @@ static void convert(const string& str, vector<Uint32>& outData) {
             for (int j = 0; j < it->second.size(); j++) {
                 if ((Uint16)t == it->second[j]) {
                     kSign = 0;
-                    outData.push_back(_codeTable[vCodeTable][it->first][k] | CHAR_CODE_MASK);
+                    outData.push_back(_codeTable[engineCodeTable()][it->first][k] | CHAR_CODE_MASK);
                     break;
                 }//end if
                 k++;
@@ -132,14 +132,14 @@ static bool modifyCaseUnicode(Uint32& code, const bool& isUpperCase=true) {
     }
     
     //for unicode character
-    for (map<Uint32, vector<Uint16>>::iterator it = _codeTable[vCodeTable].begin(); it != _codeTable[vCodeTable].end(); ++it) {
+    for (map<Uint32, vector<Uint16>>::iterator it = _codeTable[engineCodeTable()].begin(); it != _codeTable[engineCodeTable()].end(); ++it) {
         for (_kMacro = 0; _kMacro < it->second.size(); _kMacro++) {
             if ((Uint16)code == it->second[_kMacro]) {
                 if (_kMacro % 2 == 0 && !isUpperCase)
                     _kMacro++;
                 else if (_kMacro % 2 != 0 && isUpperCase)
                     _kMacro--;
-                code = _codeTable[vCodeTable][it->first][_kMacro] | CHAR_CODE_MASK;
+                code = _codeTable[engineCodeTable()][it->first][_kMacro] | CHAR_CODE_MASK;
                 return code != _charBuff;;
             }//end if
         }

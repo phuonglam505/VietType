@@ -14,10 +14,16 @@ redistribute your new version, it MUST be open source.
 class VietTypeManager {
 public:
 	static unsigned short _lastKeyCode;
-	static vector<LPCTSTR>& getInputType();
+	struct InputMethod {
+        vKeyInputType id;
+        LPCTSTR label;
+    };
+    static const vector<InputMethod>& getInputType();
 	static vector<LPCTSTR>& getTableCode();
 
-	static void initEngine();
+	static bool initEngine();
+	static void refreshImeStatus();
+	static void refreshInputEncoding();
 	static void freeEngine();
 
 

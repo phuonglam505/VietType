@@ -1,12 +1,16 @@
+#include "UiLanguage.h"
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include <shlobj.h>
 #include <winhttp.h>
 #include <wrl/client.h>
 #include <array>
 #include <thread>
+#include <mutex>
+#include <memory>
 #include <utility>
+#include <winrt/Windows.Foundation.Collections.h>
 #include <winrt/Windows.Data.Json.h>
-#include "ReleaseVersion.h"
+#include "SelfUpdate.h"
 #include "SystemOptions.h"
 
 namespace viettype {
@@ -33,11 +37,38 @@ struct InternetHandle {
     ~InternetHandle() { if (value) WinHttpCloseHandle(value); }
 };
 
-enum class UpdateResult { unavailable, noRelease, current, newer };
-bool checkInProgress = false;
-bool interactiveRequested = false;
+enum class UpdateResult { unavailable, noRelease, unrecognizedVersion, current, newer, noAsset, downloaded, downloadFailed };
+struct UpdateNotice {
+    UpdateResult result = UpdateResult::unavailable;
+    UpdateAsset asset;
+    std::vector<BYTE> payload;
+};
 
-UpdateResult fetchRelease()
+struct UpdateMailbox {
+    std::mutex mutex;
+    std::optional<UpdateNotice> pending;
+};
+
+const auto updateMailbox = std::make_shared<UpdateMailbox>();
+bool updateInProgress = false;
+std::optional<UpdateAsset> availableUpdate;
+std::optional<ReleaseVersion> notifiedVersion;
+
+std::wstring updateVersionLabel(const ReleaseVersion& version)
+{
+    return std::to_wstring(version[0]) + L"." + std::to_wstring(version[1]) + L"." +
+           std::to_wstring(version[2]);
+}
+
+void publishUpdate(const std::shared_ptr<UpdateMailbox>& mailbox, HWND parent, UpdateNotice notice)
+{
+    const std::lock_guard<std::mutex> guard(mailbox->mutex);
+    mailbox->pending = std::move(notice);
+    PostMessage(parent, updateResultMessage, 0, 0);
+}
+
+
+UpdateResult fetchRelease(UpdateAsset& asset)
 {
     InternetHandle session{WinHttpOpen(L"VietType", WINHTTP_ACCESS_TYPE_AUTOMATIC_PROXY,
                                        WINHTTP_NO_PROXY_NAME, WINHTTP_NO_PROXY_BYPASS, 0)};
@@ -78,8 +109,16 @@ UpdateResult fetchRelease()
         winrt::to_string(release.GetNamedString(L"tag_name")),
         winrt::to_string(release.GetNamedString(L"name", L"")));
     const auto installed = parseReleaseVersion(winrt::to_string(VIETTYPE_VERSION_DISPLAY));
-    if (!latest || !installed) return UpdateResult::unavailable;
-    return *latest > *installed ? UpdateResult::newer : UpdateResult::current;
+    if (!latest || !installed) return UpdateResult::unrecognizedVersion;
+    if (*latest <= *installed) return UpdateResult::current;
+    for (const auto& value : release.GetNamedArray(L"assets")) {
+        const auto file = value.GetObject();
+        if (file.GetNamedString(L"name", L"") != L"VietType.exe") continue;
+        asset = {*latest, std::wstring(file.GetNamedString(L"browser_download_url", L"")),
+                 std::wstring(file.GetNamedString(L"digest", L""))};
+        if (validUpdateAsset(asset)) return UpdateResult::newer;
+    }
+    return UpdateResult::noAsset;
 }
 
 }
@@ -156,50 +195,112 @@ bool setDesktopShortcut(bool enabled)
     return saved;
 }
 
-void checkForUpdate(HWND parent, bool interactive)
+void checkForUpdate(HWND parent)
 {
-    interactiveRequested = interactiveRequested || interactive;
-    if (checkInProgress) return;
-    checkInProgress = true;
+    if (updateInProgress) return;
+    updateInProgress = true;
     try {
-        std::thread([parent] {
-            auto result = UpdateResult::unavailable;
+        std::thread([parent, mailbox=updateMailbox] {
+            UpdateNotice notice;
             try {
                 winrt::init_apartment();
-                try { result = fetchRelease(); } catch (...) {}
+                try { notice.result = fetchRelease(notice.asset); } catch (...) {}
                 winrt::uninit_apartment();
             } catch (...) {}
-            PostMessage(parent, updateResultMessage, static_cast<WPARAM>(result), 0);
+            publishUpdate(mailbox, parent, std::move(notice));
         }).detach();
     } catch (const std::system_error&) {
-        onUpdateResult(parent, static_cast<WPARAM>(UpdateResult::unavailable));
+        publishUpdate(updateMailbox, parent, {});
     }
 }
 
-void onUpdateResult(HWND parent, WPARAM result)
+static void beginUpdateDownload(HWND parent, UpdateAsset asset)
 {
-    checkInProgress = false;
-    const bool interactive = std::exchange(interactiveRequested, false);
-    switch (static_cast<UpdateResult>(result)) {
-    case UpdateResult::newer:
-        if (MessageBox(parent, L"Đã có bản VietType mới. Mở GitHub Releases để tải?",
-                       L"Cập nhật VietType", MB_YESNO | MB_ICONINFORMATION) == IDYES) {
-            ShellExecute(parent, L"open", L"https://github.com/phuonglam505/VietType/releases/latest",
-                         nullptr, nullptr, SW_SHOWNORMAL);
+    updateInProgress = true;
+    try {
+        std::thread([parent, mailbox=updateMailbox, asset=std::move(asset)]() mutable {
+            UpdateNotice notice;
+            notice.asset = std::move(asset);
+            notice.result = UpdateResult::downloadFailed;
+            try {
+                notice.payload = downloadUpdate(notice.asset);
+                if (!notice.payload.empty()) notice.result = UpdateResult::downloaded;
+            } catch (...) {}
+            publishUpdate(mailbox, parent, std::move(notice));
+        }).detach();
+    } catch (const std::system_error&) {
+        publishUpdate(updateMailbox, parent, {UpdateResult::downloadFailed, {}, {}});
+    }
+}
+
+void installAvailableUpdate(HWND parent, HWND button, HWND status)
+{
+    if (updateInProgress || !availableUpdate) return;
+    EnableWindow(button, FALSE);
+    SetWindowText(status, viettype::tr(L"Đang tải và xác minh bản cập nhật…"));
+    beginUpdateDownload(parent, *availableUpdate);
+}
+
+void onUpdateResult(HWND parent, HWND button, HWND status)
+{
+    std::optional<UpdateNotice> notice;
+    {
+        const std::lock_guard<std::mutex> guard(updateMailbox->mutex);
+        notice = std::exchange(updateMailbox->pending, std::nullopt);
+    }
+    if (!notice) return;
+    updateInProgress = false;
+    const auto caption = viettype::tr(L"Cập nhật VietType");
+    switch (notice->result) {
+    case UpdateResult::newer: {
+        availableUpdate = std::move(notice->asset);
+        const auto version = availableUpdate->version;
+        const auto message = std::wstring(viettype::tr(L"Đã có VietType ")) + updateVersionLabel(version) + L".";
+        SetWindowText(status, message.c_str());
+        EnableWindow(button, TRUE);
+        if (notifiedVersion != version) {
+            notifiedVersion = version;
+            const auto details = message + viettype::tr(L" Mở tab Thông tin và chọn Cập nhật để cài đặt.");
+            MessageBox(parent, details.c_str(), caption, MB_OK | MB_ICONINFORMATION);
         }
         return;
-    case UpdateResult::current:
-        if (interactive) MessageBox(parent, L"Bạn đang dùng bản VietType mới nhất.",
-                                     L"Cập nhật VietType", MB_OK | MB_ICONINFORMATION);
-        return;
-    case UpdateResult::noRelease:
-        if (interactive) MessageBox(parent, L"Chưa tìm thấy bản phát hành công khai của VietType trên GitHub.",
-                                     L"Cập nhật VietType", MB_OK | MB_ICONINFORMATION);
-        return;
-    case UpdateResult::unavailable:
-        if (interactive) MessageBox(parent, L"Không kiểm tra được bản mới trên GitHub. Hãy thử lại sau.",
-                                     L"Cập nhật VietType", MB_OK | MB_ICONWARNING);
+    }
+    case UpdateResult::downloaded: {
+        std::wstring error;
+        if (replaceAndRestart(notice->asset, notice->payload, error)) {
+            PostQuitMessage(0);
+            return;
+        }
+        EnableWindow(button, TRUE);
+        SetWindowText(status, viettype::tr(L"Cài đặt chưa thành công."));
+        MessageBox(parent, error.c_str(), caption, MB_OK | MB_ICONERROR);
         return;
     }
+    case UpdateResult::downloadFailed:
+        EnableWindow(button, TRUE);
+        SetWindowText(status, viettype::tr(L"Tải hoặc xác minh bản cập nhật chưa thành công."));
+        MessageBox(parent, viettype::tr(L"Không tải hoặc xác minh được tệp cập nhật. Hãy thử lại sau."),
+                   caption, MB_OK | MB_ICONWARNING);
+        return;
+    case UpdateResult::noAsset:
+        availableUpdate.reset();
+        SetWindowText(status, viettype::tr(L"Bản mới trên GitHub chưa có tệp cập nhật hợp lệ."));
+        break;
+    case UpdateResult::current:
+        availableUpdate.reset();
+        SetWindowText(status, viettype::tr(L"Bạn đang dùng bản mới nhất."));
+        break;
+    case UpdateResult::noRelease:
+        availableUpdate.reset();
+        SetWindowText(status, viettype::tr(L"Chưa tìm thấy bản phát hành trên GitHub."));
+        break;
+    case UpdateResult::unrecognizedVersion:
+        SetWindowText(status, viettype::tr(L"Chưa đọc được số phiên bản trên GitHub."));
+        break;
+    case UpdateResult::unavailable:
+        SetWindowText(status, viettype::tr(L"Chưa kiểm tra được bản mới trên GitHub."));
+        break;
+    }
+    EnableWindow(button, availableUpdate.has_value());
 }
 }

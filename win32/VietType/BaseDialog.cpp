@@ -9,6 +9,7 @@ You can fork, modify, improve this program. If you
 redistribute your new version, it MUST be open source.
 -----------------------------------------------------------*/
 #include "BaseDialog.h"
+#include "UiLanguage.h"
 static TCHAR tooltipBuff[1024];
 
 static INT_PTR CALLBACK DialogProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM lParam) {
@@ -19,7 +20,9 @@ static INT_PTR CALLBACK DialogProc(HWND hDlg, UINT uMsg, WPARAM wParam, LPARAM l
 		SetWindowLong(hDlg, GWL_USERDATA, lParam);
 #endif
 		BaseDialog*b = (BaseDialog*)lParam;
-		return b->eventProc(hDlg, uMsg, wParam, lParam);
+        const auto initialized = b->eventProc(hDlg, uMsg, wParam, lParam);
+        viettype::localizeDialog(hDlg);
+        return initialized;
 	}
 #ifdef _WIN64
 	LONG_PTR attr = GetWindowLongPtr(hDlg, GWLP_USERDATA);
@@ -58,7 +61,7 @@ void BaseDialog::createToolTip(const HWND& control, LPCTSTR toolTipString) {
 
 void BaseDialog::createToolTip(const HWND& control, const UINT& stringResId) {
 	LoadString(hInstance, stringResId, tooltipBuff, 1024);
-	createToolTip(control, tooltipBuff);
+	createToolTip(control, viettype::tr(tooltipBuff));
 }
 
 BaseDialog::BaseDialog(const HINSTANCE& hInstance, const int & resourceId) {

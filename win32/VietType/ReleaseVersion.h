@@ -10,7 +10,10 @@ using ReleaseVersion = std::array<unsigned, 3>;
 
 inline std::optional<ReleaseVersion> parseReleaseVersion(std::string_view tag)
 {
-    if (!tag.empty() && tag.front() == 'v') tag.remove_prefix(1);
+    if (!tag.empty() && (tag.front() == 'v' || tag.front() == 'V')) {
+        tag.remove_prefix(1);
+        if (!tag.empty() && tag.front() == '.') tag.remove_prefix(1);
+    }
     ReleaseVersion version{};
     for (size_t index = 0; index < version.size(); ++index) {
         const auto separator = tag.find('.');
@@ -30,10 +33,19 @@ inline std::optional<ReleaseVersion> parseGitHubReleaseVersion(std::string_view 
 {
     if (const auto version = parseReleaseVersion(tag)) return version;
 
-    // The first public release used a fixed tag and a versioned title.
-    constexpr std::string_view prefix = "VietType ";
-    if (tag != "viettype" || title.substr(0, prefix.size()) != prefix) return {};
-    title.remove_prefix(prefix.size());
-    return parseReleaseVersion(title);
+    constexpr std::string_view product = "viettype";
+    const auto withoutProduct = [product](std::string_view value) {
+        if (value.size() < product.size()) return value;
+        for (size_t i = 0; i < product.size(); ++i) {
+            char ch = value[i];
+            if (ch >= 'A' && ch <= 'Z') ch += 'a' - 'A';
+            if (ch != product[i]) return value;
+        }
+        value.remove_prefix(product.size());
+        const auto first = value.find_first_not_of(" -_");
+        return first == std::string_view::npos ? std::string_view{} : value.substr(first);
+    };
+    if (const auto version = parseReleaseVersion(withoutProduct(tag))) return version;
+    return parseReleaseVersion(withoutProduct(title));
 }
 }

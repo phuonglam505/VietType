@@ -1,3 +1,4 @@
+#include "UiLanguage.h"
 /*----------------------------------------------------------
 OpenKey
 
@@ -14,8 +15,8 @@ redistribute your new version, it MUST be open source.
 #include <commdlg.h>
 
 #define MAX_MACRO_BUFFER 4096
-#define BTN_ADD_TEXT _T("+ Thêm")
-#define BTN_UPDATE_TEXT _T("+ Sửa")
+#define BTN_ADD_TEXT viettype::tr(L"+ Thêm")
+#define BTN_UPDATE_TEXT viettype::tr(L"+ Sửa")
 
 MacroDialog::MacroDialog(const HINSTANCE & hInstance, const int & resourceId)
 	: BaseDialog(hInstance, resourceId)  {
@@ -162,7 +163,7 @@ void MacroDialog::onAddMacroButton() {
 	wstring content = buffer;
 
 	if (name.compare(L"") == 0 || content.compare(L"") == 0) {
-		MessageBox(hDlg, _T("Bạn hãy nhập từ cần gõ tắt!"), _T("VietType"), MB_OK);
+		MessageBox(hDlg, viettype::tr(L"Bạn hãy nhập từ cần gõ tắt!"), _T("VietType"), MB_OK);
 		return;
 	}
 
@@ -179,7 +180,7 @@ void MacroDialog::onDeleteMacroButton() {
 	wstring name = buffer;
 
 	if (name.compare(L"") == 0) {
-		MessageBox(hDlg, _T("Bạn hãy chọn từ cần xoá!"), _T("VietType"), MB_OK);
+		MessageBox(hDlg, viettype::tr(L"Bạn hãy chọn từ cần xoá!"), _T("VietType"), MB_OK);
 		return;
 	}
 
@@ -210,8 +211,8 @@ void MacroDialog::onImportMacroButton() {
 	if (GetOpenFileName(&ofn) == TRUE) {
 		int msgboxID = MessageBox(
 			hDlg,
-			_T("Bạn có muốn giữ lại dữ liệu hiện tại không?"),
-			_T("Dữ liệu gõ tắt"),
+			viettype::tr(L"Bạn có muốn giữ lại dữ liệu hiện tại không?"),
+			viettype::tr(L"Dữ liệu gõ tắt"),
 			MB_ICONEXCLAMATION | MB_YESNO
 		);
 		wstring path = ofn.lpstrFile;

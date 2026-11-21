@@ -13,6 +13,7 @@ bool setStartsWithWindows(bool enabled);
 bool hasDesktopShortcut();
 bool setDesktopShortcut(bool enabled);
 constexpr UINT updateResultMessage = WM_APP + 44;
-void checkForUpdate(HWND parent, bool interactive);
-void onUpdateResult(HWND parent, WPARAM result);
+void checkForUpdate(HWND parent);
+void installAvailableUpdate(HWND parent, HWND button, HWND status);
+void onUpdateResult(HWND parent, HWND button, HWND status);
 }

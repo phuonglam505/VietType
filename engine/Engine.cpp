@@ -5,6 +5,7 @@
 #include "Engine.h"
 #include <string.h>
 #include <list>
+#include <string_view>
 #include "Macro.h"
 
 static vector<Uint8> _charKeyCode = {
@@ -33,20 +34,33 @@ static Uint16 ProcessingChar[][11] = {
     {KEY_S, KEY_F, KEY_R, KEY_X, KEY_J, KEY_A, KEY_O, KEY_E, KEY_W, KEY_D, KEY_Z} //Simple Telex 2
 };
 
-#define IS_KEY_Z(key) (ProcessingChar[vInputType][10] == key)
-#define IS_KEY_D(key) (ProcessingChar[vInputType][9] == key)
-#define IS_KEY_W(key) ((vInputType != vVNI) ? ProcessingChar[vInputType][8] == key : \
-                                    (vInputType == vVNI ? (ProcessingChar[vInputType][8] == key || ProcessingChar[vInputType][7] == key) : false))
-#define IS_KEY_DOUBLE(key) ((vInputType != vVNI) ? (ProcessingChar[vInputType][5] == key || ProcessingChar[vInputType][6] == key || ProcessingChar[vInputType][7] == key) :\
-                                        (vInputType == vVNI ? ProcessingChar[vInputType][6] == key : false))
-#define IS_KEY_S(key) (ProcessingChar[vInputType][0] == key)
-#define IS_KEY_F(key) (ProcessingChar[vInputType][1] == key)
-#define IS_KEY_R(key) (ProcessingChar[vInputType][2] == key)
-#define IS_KEY_X(key) (ProcessingChar[vInputType][3] == key)
-#define IS_KEY_J(key) (ProcessingChar[vInputType][4] == key)
+static bool usesVniKeys(Uint16 key) {
+    return vInputType == vVNI ||
+        ((vInputType == vVniTelex || vInputType == vBilingualVniTelex) && IS_NUMBER_KEY(key));
+}
 
-#define IS_MARK_KEY(keyCode) (((vInputType != vVNI) && (keyCode == KEY_S || keyCode == KEY_F || keyCode == KEY_R || keyCode == KEY_J || keyCode == KEY_X)) || \
-                                        (vInputType == vVNI && (keyCode == KEY_1 || keyCode == KEY_2 || keyCode == KEY_3 || keyCode == KEY_5 || keyCode == KEY_4)))
+static const Uint16* inputKeys(Uint16 key) {
+    return ProcessingChar[usesVniKeys(key) ? vVNI : vTelex];
+}
+
+static bool isSpecialKey(Uint16 key) {
+    if (usesVniKeys(key)) return IS_NUMBER_KEY(key);
+    if (key == KEY_LEFT_BRACKET || key == KEY_RIGHT_BRACKET) return vInputType != vSimpleTelex1 && vInputType != vSimpleTelex2;
+    const auto& keys = ProcessingChar[vTelex];
+    return std::find(std::begin(keys), std::end(keys), key) != std::end(keys);
+}
+
+#define IS_KEY_Z(key) (inputKeys(key)[10] == key)
+#define IS_KEY_D(key) (inputKeys(key)[9] == key)
+#define IS_KEY_W(key) (usesVniKeys(key) ? (key == KEY_7 || key == KEY_8) : key == KEY_W)
+#define IS_KEY_DOUBLE(key) (usesVniKeys(key) ? key == KEY_6 : (key == KEY_A || key == KEY_O || key == KEY_E))
+#define IS_KEY_S(key) (inputKeys(key)[0] == key)
+#define IS_KEY_F(key) (inputKeys(key)[1] == key)
+#define IS_KEY_R(key) (inputKeys(key)[2] == key)
+#define IS_KEY_X(key) (inputKeys(key)[3] == key)
+#define IS_KEY_J(key) (inputKeys(key)[4] == key)
+
+#define IS_MARK_KEY(keyCode) (IS_KEY_S(keyCode) || IS_KEY_F(keyCode) || IS_KEY_R(keyCode) || IS_KEY_X(keyCode) || IS_KEY_J(keyCode))
 #define IS_BRACKET_KEY(key) (key == KEY_LEFT_BRACKET || key == KEY_RIGHT_BRACKET)
 
 #define VSI vowelStartIndex
@@ -532,18 +546,18 @@ Uint32 getCharacterCode(const Uint32& data) {
         } else if (data & TONEW_MASK) {
             key |= TONEW_MASK;
         }
-        if (_codeTable[vCodeTable].find(key) == _codeTable[vCodeTable].end())
+        if (_codeTable[engineCodeTable()].find(key) == _codeTable[engineCodeTable()].end())
             return data; //not found
         
-        return _codeTable[vCodeTable][key][markElem] | CHAR_CODE_MASK;
+        return _codeTable[engineCodeTable()][key][markElem] | CHAR_CODE_MASK;
     } else { //doesn't has mark
-        if (_codeTable[vCodeTable].find(key) == _codeTable[vCodeTable].end())
+        if (_codeTable[engineCodeTable()].find(key) == _codeTable[engineCodeTable()].end())
             return data; //not found
         
         if (data & TONE_MASK) {
-            return _codeTable[vCodeTable][key][capsElem] | CHAR_CODE_MASK;
+            return _codeTable[engineCodeTable()][key][capsElem] | CHAR_CODE_MASK;
         } else if (data & TONEW_MASK) {
-            return _codeTable[vCodeTable][key][capsElem + 2] | CHAR_CODE_MASK;
+            return _codeTable[engineCodeTable()][key][capsElem + 2] | CHAR_CODE_MASK;
         } else {
             return data; //not found
         }
@@ -1137,7 +1151,7 @@ void handleMainKey(const Uint16& data, const bool& isCaps) {
     }
     
     //check Vowel
-    if (vInputType == vVNI) {
+    if (usesVniKeys(data)) {
         for (i = _index-1; i >= 0; i--) {
             if (CHR(i) == KEY_O || CHR(i) == KEY_A || CHR(i) == KEY_E) {
                 VEI = i;
@@ -1146,7 +1160,7 @@ void handleMainKey(const Uint16& data, const bool& isCaps) {
         }
     }
     
-    keyForAEO = ((vInputType != vVNI) ? data : ((data == KEY_7 || data == KEY_8 ? KEY_W : (data == KEY_6 ? TypingWord[VEI] : data))));
+    keyForAEO = (!usesVniKeys(data) ? data : ((data == KEY_7 || data == KEY_8 ? KEY_W : (data == KEY_6 ? TypingWord[VEI] : data))));
     vector<vector<Uint16>>& charset = _vowel[keyForAEO];
     isCorect = false;
     isChanged = false;
@@ -1162,7 +1176,7 @@ void handleMainKey(const Uint16& data, const bool& isCaps) {
             if (IS_KEY_DOUBLE(data)) {
                 insertAOE(keyForAEO, isCaps);
             } else if (IS_KEY_W(data)) {
-                if (vInputType == vVNI) {
+                if (usesVniKeys(data)) {
                     for (j = _index-1; j >= 0; j--) {
                         if (CHR(j) == KEY_O || CHR(j) == KEY_U ||CHR(j) == KEY_A || CHR(j) == KEY_E) {
                             VEI = j;
@@ -1196,19 +1210,55 @@ void handleQuickTelex(const Uint16& data, const bool& isCaps) {
     insertKey(_quickTelex[data][1], isCaps, false);
 }
 
+static bool isCommonEnglishWord() {
+    static constexpr std::string_view words[] = {
+        "access", "address", "add", "button", "class", "close", "code", "coffee",
+        "command", "commit", "config", "const", "copy", "data", "debug", "default",
+        "delete", "done", "door", "download", "edit", "error", "false", "feature",
+        "file", "fix", "folder", "food", "good", "hello", "issue", "less", "look",
+        "makes", "message", "miss", "more", "move", "name", "network", "off", "open",
+        "pass", "please", "press", "project", "pull", "push", "read", "release",
+        "remove", "request", "reset", "root", "save", "screen", "search", "select",
+        "sense", "server", "settings", "show", "start", "status", "stop", "success",
+        "support", "test", "text", "thanks", "this", "tool", "true", "update", "use",
+        "user", "value", "var", "version", "view", "windows", "work", "world", "write"
+    };
+    static constexpr Uint16 letterKeys[] = {
+        KEY_A, KEY_B, KEY_C, KEY_D, KEY_E, KEY_F, KEY_G, KEY_H, KEY_I, KEY_J, KEY_K,
+        KEY_L, KEY_M, KEY_N, KEY_O, KEY_P, KEY_Q, KEY_R, KEY_S, KEY_T, KEY_U, KEY_V,
+        KEY_W, KEY_X, KEY_Y, KEY_Z
+    };
+    char word[8];
+    if ((vInputType != vBilingualTelex && vInputType != vBilingualVniTelex) || _stateIndex < 3 || _stateIndex > sizeof(word)) return false;
+    if (!_longWordHelper.empty()) return false;
+    if (_index == _stateIndex && std::equal(TypingWord, TypingWord + _index, KeyStates)) return false;
+
+    for (size_t key = 0; key < _stateIndex; ++key) {
+        const auto letter = std::find(std::begin(letterKeys), std::end(letterKeys), KeyStates[key] & ~CAPS_MASK);
+        if (letter == std::end(letterKeys)) return false;
+        word[key] = static_cast<char>('a' + (letter - std::begin(letterKeys)));
+    }
+    const std::string_view raw(word, _stateIndex);
+    return std::find(std::begin(words), std::end(words), raw) != std::end(words);
+}
+
+static void restoreRawWord(int handleCode) {
+    hCode = handleCode;
+    hBPC = _index;
+    hNCC = _stateIndex;
+    for (size_t key = 0; key < _stateIndex; ++key) {
+        TypingWord[key] = KeyStates[key];
+        hData[_stateIndex - 1 - key] = KeyStates[key];
+    }
+    _index = _stateIndex;
+}
+
 bool checkRestoreIfWrongSpelling(const int& handleCode) {
     for (ii = 0; ii < _index; ii++) {
         if (!IS_CONSONANT(CHR(ii)) &&
             (TypingWord[ii] & MARK_MASK || TypingWord[ii] & TONE_MASK || TypingWord[ii] & TONEW_MASK)) {
             
-            hCode = handleCode;
-            hBPC = _index;
-            hNCC = _stateIndex;
-            for (i = 0; i < _stateIndex; i++) {
-                TypingWord[i] = KeyStates[i];
-                hData[_stateIndex - 1 - i] = TypingWord[i];
-            }
-            _index = _stateIndex;
+            restoreRawWord(handleCode);
             return true;
         }
     }
@@ -1325,6 +1375,9 @@ void vKeyHandleEvent(const vKeyEvent& event,
             hCode = vReplaceMaro;
             hBPC = (Byte)hMacroKey.size();
             _hasHandledMacro = true;
+        } else if (!otherControlKey && state == KeyDown &&
+                   (isMacroBreakCode(data) || data == KEY_ENTER || data == KEY_TAB) && isCommonEnglishWord()) {
+            restoreRawWord(vRestoreAndStartNewSession);
         } else if ((vQuickStartConsonant || vQuickEndConsonant) && !tempDisableKey && isMacroBreakCode(data)) {
             checkQuickConsonant();
         } else if (vRestoreIfWrongSpelling && isWordBreak(event, state, data)) { //restore key if wrong spelling with break-key
@@ -1385,6 +1438,9 @@ void vKeyHandleEvent(const vKeyEvent& event,
             hBPC = (Byte)hMacroKey.size();
             _spaceCount++;
             _hasHandledMacro = true;
+        } else if (!_hasHandledMacro && isCommonEnglishWord()) {
+            restoreRawWord(vRestore);
+            _spaceCount++;
         } else if ((vQuickStartConsonant || vQuickEndConsonant) && !tempDisableKey && checkQuickConsonant()) {
             _spaceCount++;
         } else if (vRestoreIfWrongSpelling && tempDisableKey && !_hasHandledMacro) { //restore key if wrong spelling
@@ -1478,7 +1534,7 @@ void vKeyHandleEvent(const vKeyEvent& event,
 
         insertState(data, _isCaps); //save state
         
-        if (!IS_SPECIALKEY(data) || tempDisableKey) { //do nothing
+        if (!isSpecialKey(data) || tempDisableKey) { //do nothing
             if (vQuickTelex && IS_QUICK_TELEX_KEY(data)) {
                 handleQuickTelex(data, _isCaps);
                 return;

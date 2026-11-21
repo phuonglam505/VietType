@@ -1,3 +1,4 @@
+#include "UiLanguage.h"
 /*----------------------------------------------------------
 OpenKey
 
@@ -10,6 +11,7 @@ redistribute your new version, it MUST be open source.
 -----------------------------------------------------------*/
 #include "MainWindow.h"
 #include "SystemOptions.h"
+#include "SelfUpdate.h"
 #include "AppDelegate.h"
 
 static AppDelegate* _instance;
@@ -22,8 +24,7 @@ int vCodeTable = 0;
 int vCheckSpelling = 1;
 int vUseModernOrthography = 1;
 int vQuickTelex = 0;
-#define DEFAULT_SWITCH_STATUS 0x5A00025A //default option + z
-int vSwitchKeyStatus = DEFAULT_SWITCH_STATUS;
+int vSwitchKeyStatus = defaultSwitchHotkey;
 int vRestoreIfWrongSpelling = 1;
 int vFixRecommendBrowser = 0;
 int vUseMacro = 1;
@@ -74,25 +75,34 @@ int AppDelegate::run(HINSTANCE hInstance) {
             PostMessage(previousInstance, showVietTypeWindow, 0, 0);
         } else {
             MessageBox(nullptr,
-                L"Một bản VietType khác đang chạy. Nhấp phải vào biểu tượng V/E ở khay hệ thống, "
-                L"chọn Thoát, rồi mở lại tệp này để xem cửa sổ đầy đủ.",
+                viettype::tr(L"Một bản VietType khác đang chạy. Nhấp phải vào biểu tượng V/E ở khay hệ thống, "
+                L"chọn Thoát, rồi mở lại tệp này để xem cửa sổ đầy đủ."),
                 L"VietType", MB_OK | MB_ICONINFORMATION);
         }
 		return 0;
 	}
 
-	//init VietType Engine
-	VietTypeManager::initEngine();
-
-	//create system tray
-	SystemTrayHelper::createSystemTrayIcon(hInstance);
-	SystemTrayHelper::updateData();
+    const bool trayReady = SystemTrayHelper::createSystemTrayIcon(hInstance);
+    VietTypeManager::refreshImeStatus();
+    if (!VietTypeManager::initEngine()) {
+        VietTypeManager::freeEngine();
+        SystemTrayHelper::removeSystemTray();
+        MessageBox(nullptr, viettype::tr(L"Không khởi tạo được bộ gõ. VietType chưa nhận phím."),
+                   L"VietType", MB_OK | MB_ICONERROR);
+        return 1;
+    }
+    SystemTrayHelper::updateData();
 
     MainWindow panel(hInstance, *this);
-    panel.show(viettype::showPanelAtLaunch() != 0);
+    panel.show(!trayReady || viettype::showPanelAtLaunch() != 0);
     mainWindow = &panel;
+    if (trayReady && panel.getHwnd()) viettype::confirmUpdateReady();
+    if (!trayReady) {
+        MessageBox(panel.getHwnd(), viettype::tr(L"Không tạo được biểu tượng khay. Bản dự phòng (nếu có) vẫn được giữ."),
+                   L"VietType", MB_OK | MB_ICONWARNING);
+    }
     if (viettype::checkUpdatesAtLaunch()) {
-        viettype::checkForUpdate(panel.getHwnd(), false);
+        viettype::checkForUpdate(panel.getHwnd());
     }
 
     MSG msg;
@@ -146,6 +156,12 @@ void AppDelegate::onToggleVietnamese() {
 	SystemTrayHelper::updateData();
 }
 
+void AppDelegate::onUiLanguageChanged() {
+    if (macroDialog) viettype::localizeDialog(macroDialog->getHwnd());
+    if (convertDialog) static_cast<ConvertToolDialog*>(convertDialog)->refreshLanguage();
+    SystemTrayHelper::refreshLanguage();
+}
+
 void AppDelegate::onMacroTable() {
 	if (macroDialog == NULL) {
 		macroDialog = new MacroDialog(hInstance, IDD_DIALOG_MACRO);
@@ -170,19 +186,28 @@ void AppDelegate::onQuickConvert() {
 		if (!convertToolDontAlertWhenCompleted) {
 			TCHAR msg[256];
 			LoadString(hInstance, IDS_STRING_CONVERT_COMPLETED, msg, 256);
-			MessageBox(NULL, msg, _T("VietType"), MB_OK);
+			MessageBox(NULL, viettype::tr(msg), _T("VietType"), MB_OK);
 		}
 	}
 }
 
 void AppDelegate::onInputType(const int & type) {
-	APP_SET_DATA(vInputType, type);
+    if (type < vTelex || type > vBilingualVniTelex) return;
+    if (type != vInputType) {
+        APP_SET_DATA(vInputType, type);
+        startNewSession();
+    }
 	refreshMainWindow();
 	SystemTrayHelper::updateData();
 }
 
 void AppDelegate::onTableCode(const int & code) {
-	APP_SET_DATA(vCodeTable, code);
+	if (code < 0 || static_cast<size_t>(code) >= VietTypeManager::getTableCode().size()) return;
+    if (code != vCodeTable) {
+        APP_SET_DATA(vCodeTable, code);
+        VietTypeManager::refreshInputEncoding();
+        onTableCodeChange();
+    }
 	if (vRememberCode) {
 		setAppInputMethodStatus(VietTypeHelper::getFrontMostAppExecuteName(), vLanguage | (vCodeTable << 1));
 		saveSmartSwitchKeyData();

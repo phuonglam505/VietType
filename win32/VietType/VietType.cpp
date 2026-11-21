@@ -1,3 +1,4 @@
+#include <algorithm>
 /*----------------------------------------------------------
 OpenKey
 
@@ -10,6 +11,7 @@ redistribute your new version, it MUST be open source.
 -----------------------------------------------------------*/
 #include "stdafx.h"
 #include "AppDelegate.h"
+#include "../../engine/ClipboardEncoding.h"
 
 #pragma comment(lib, "imm32")
 #define IMC_GETOPENSTATUS 0x0005
@@ -68,21 +70,71 @@ LRESULT CALLBACK keyboardHookProcess(int nCode, WPARAM wParam, LPARAM lParam);
 LRESULT CALLBACK mouseHookProcess(int nCode, WPARAM wParam, LPARAM lParam);
 VOID CALLBACK winEventProcCallback(HWINEVENTHOOK hWinEventHook, DWORD dwEvent, HWND hwnd, LONG idObject, LONG idChild, DWORD dwEventThread, DWORD dwmsEventTime);
 
+static bool usesExtendedEncoding() { return vCodeTable >= 5; }
+static bool tracksCharacterLength() { return IS_DOUBLE_CODE(vCodeTable) || usesExtendedEncoding(); }
+static std::map<wchar_t, std::wstring> typedEncoding;
+static std::vector<INPUT> pendingInput;
+static bool inputPreparationFailed;
+static HWND imeForeground;
+static bool imeAllowsTyping;
+static bool isMetroForeground;
+static bool isChromiumForeground;
+
+static bool useClipboardForInput() {
+	return !usesExtendedEncoding() && !vSendKeyStepByStep && !(vSupportMetroApp && isMetroForeground);
+}
+
+static void queueInput(UINT count, const INPUT* events) {
+	pendingInput.insert(pendingInput.end(), events, events + count);
+}
+
+void VietTypeManager::refreshImeStatus() {
+    const auto foreground = GetForegroundWindow();
+    if (foreground != imeForeground) {
+        imeForeground = foreground;
+        DWORD processId = 0;
+        if (foreground) GetWindowThreadProcessId(foreground, &processId);
+        isChromiumForeground = false;
+        if (processId && processId != GetCurrentProcessId()) {
+            const auto& app = VietTypeHelper::getFrontMostAppExecuteName();
+            isChromiumForeground = std::find(_chromiumBrowser.begin(), _chromiumBrowser.end(), app)
+                                   != _chromiumBrowser.end();
+        }
+    }
+	wchar_t name[64]{};
+	if (imeForeground) GetClassNameW(imeForeground, name, ARRAYSIZE(name));
+	isMetroForeground = wcscmp(name, L"ApplicationFrameWindow") == 0;
+	const auto ime = imeForeground ? ImmGetDefaultIMEWnd(imeForeground) : nullptr;
+	DWORD_PTR open = 0;
+	imeAllowsTyping = !ime || (SendMessageTimeout(ime, WM_IME_CONTROL, IMC_GETOPENSTATUS, 0,
+		SMTO_ABORTIFHUNG | SMTO_BLOCK, 20, &open) && !open);
+}
+
 void VietTypeFree() {
 	UnhookWindowsHookEx(hMouseHook);
 	UnhookWindowsHookEx(hKeyboardHook);
 	UnhookWinEvent(hSystemEvent);
 }
 
-void VietTypeInit() {
+bool VietTypeInit() {
 	APP_GET_DATA(vLanguage, 1);
-	APP_GET_DATA(vInputType, 0);
+    APP_GET_DATA(vInputType, vTelex);
+    if (vInputType < vTelex || vInputType > vBilingualVniTelex) vInputType = vTelex;
+    if (VietTypeHelper::getRegInt(L"vBilingualTyping", 0)) {
+        if (vInputType == vTelex) {
+            APP_SET_DATA(vInputType, vBilingualTelex);
+        }
+        VietTypeHelper::setRegInt(L"vBilingualTyping", 0);
+    }
 	vFreeMark = 0;
 	APP_GET_DATA(vCodeTable, 0);
+    const auto tableCount = VietTypeManager::getTableCode().size();
+    if (vCodeTable < 0 || static_cast<size_t>(vCodeTable) >= tableCount) vCodeTable = 0;
+
 	APP_GET_DATA(vCheckSpelling, 1);
 	APP_GET_DATA(vUseModernOrthography, 0);
 	APP_GET_DATA(vQuickTelex, 0);
-	APP_GET_DATA(vSwitchKeyStatus, 0x5A00025A);
+	APP_GET_DATA(vSwitchKeyStatus, defaultSwitchHotkey);
 	APP_GET_DATA(vRestoreIfWrongSpelling, 1);
 	APP_GET_DATA(vFixRecommendBrowser, 1);
 	APP_GET_DATA(vUseMacro, 1);
@@ -117,12 +169,16 @@ void VietTypeInit() {
 	APP_GET_DATA(convertToolRemoveMark, 0);
 	APP_GET_DATA(convertToolFromCode, 0);
 	APP_GET_DATA(convertToolToCode, 0);
+    const auto converterCount = clipboardEncodingNames().size();
+    if (convertToolFromCode >= converterCount) convertToolFromCode = 0;
+    if (convertToolToCode >= converterCount) convertToolToCode = 0;
 	APP_GET_DATA(convertToolHotKey, EMPTY_HOTKEY);
 	if (convertToolHotKey == 0) {
 		convertToolHotKey = EMPTY_HOTKEY;
 	}
 
 	pData = (vKeyHookState*)vKeyInit();
+    VietTypeManager::refreshInputEncoding();
 
 	//pre-create back key
 	backspaceEvent[0].type = INPUT_KEYBOARD;
@@ -163,7 +219,8 @@ void VietTypeInit() {
 	HINSTANCE hInstance = GetModuleHandle(NULL);
 	hKeyboardHook = SetWindowsHookEx(WH_KEYBOARD_LL, keyboardHookProcess, hInstance, 0);
 	hMouseHook = SetWindowsHookEx(WH_MOUSE_LL, mouseHookProcess, hInstance, 0);
-	hSystemEvent = SetWinEventHook(EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_FOREGROUND, NULL, winEventProcCallback, 0, 0, WINEVENT_OUTOFCONTEXT | WINEVENT_SKIPOWNPROCESS);
+	hSystemEvent = SetWinEventHook(EVENT_SYSTEM_FOREGROUND, EVENT_SYSTEM_FOREGROUND, NULL, winEventProcCallback, 0, 0, WINEVENT_OUTOFCONTEXT);
+	return hKeyboardHook && hMouseHook && hSystemEvent;
 }
 
 void saveSmartSwitchKeyData() {
@@ -195,20 +252,48 @@ static inline void prepareUnicodeEvent(INPUT& input, const Uint16& unicode, cons
 
 static void SendCombineKey(const Uint16& key1, const Uint16& key2, const DWORD& flagKey1=0, const DWORD& flagKey2 = 0) {
 	prepareKeyEvent(keyEvent[0], key1, true, flagKey1);
-	SendInput(1, keyEvent, sizeof(INPUT));
+	queueInput(1, keyEvent);
 
 	prepareKeyEvent(keyEvent[0], key2, true, flagKey2);
 	prepareKeyEvent(keyEvent[1], key2, false, flagKey2);
-	SendInput(2, keyEvent, sizeof(INPUT));
+	queueInput(2, keyEvent);
 
 	prepareKeyEvent(keyEvent[0], key1, false, flagKey1);
-	SendInput(1, keyEvent, sizeof(INPUT));
+	queueInput(1, keyEvent);
+}
+
+void VietTypeManager::refreshInputEncoding() {
+    typedEncoding.clear();
+    _syncKey.clear();
+    startNewSession();
+    if (!usesExtendedEncoding()) return;
+    for (const auto& entry : _codeTable[0]) {
+        for (const wchar_t letter : entry.second) {
+            if (letter < 128 || typedEncoding.count(letter)) continue;
+            auto encoded = encodeTypingCharacter(letter, vCodeTable);
+            if (encoded && !encoded->empty() && encoded->find(L'\0') == std::wstring::npos) {
+                typedEncoding.emplace(letter, std::move(*encoded));
+            }
+        }
+    }
+}
+
+static void sendExtendedCharacter(wchar_t letter) {
+    const auto found = typedEncoding.find(letter);
+    const std::wstring_view text = found == typedEncoding.end()
+        ? std::wstring_view(&letter, 1) : std::wstring_view(found->second);
+    InsertKeyLength(static_cast<Uint8>(text.size()));
+    for (const auto code : text) {
+        prepareUnicodeEvent(keyEvent[0], code, true);
+        prepareUnicodeEvent(keyEvent[1], code, false);
+        queueInput(2, keyEvent);
+    }
 }
 
 static void SendKeyCode(Uint32 data) {
 	_newChar = (Uint16)data;
 	if (!(data & CHAR_CODE_MASK)) {
-		if (IS_DOUBLE_CODE(vCodeTable)) //VNI
+		if (tracksCharacterLength()) //VNI
 			InsertKeyLength(1);
 
 		_newChar = keyCodeToCharacter(data);
@@ -216,31 +301,33 @@ static void SendKeyCode(Uint32 data) {
 			_newChar = (Uint16)data;
 			prepareKeyEvent(keyEvent[0], _newChar, true);
 			prepareKeyEvent(keyEvent[1], _newChar, false);
-			SendInput(2, keyEvent, sizeof(INPUT));
+			queueInput(2, keyEvent);
 		} else {
 			prepareUnicodeEvent(keyEvent[0], _newChar, true);
 			prepareUnicodeEvent(keyEvent[1], _newChar, false);
-			SendInput(2, keyEvent, sizeof(INPUT));
+			queueInput(2, keyEvent);
 		}
 	} else {
-		if (vCodeTable == 0) { //unicode 2 bytes code
+		if (usesExtendedEncoding()) {
+            sendExtendedCharacter(_newChar);
+        } else if (vCodeTable == 0) { //unicode 2 bytes code
 			prepareUnicodeEvent(keyEvent[0], _newChar, true);
 			prepareUnicodeEvent(keyEvent[1], _newChar, false);
-			SendInput(2, keyEvent, sizeof(INPUT));
+			queueInput(2, keyEvent);
 		} else if (vCodeTable == 1 || vCodeTable == 2 || vCodeTable == 4) { //others such as VNI Windows, TCVN3: 1 byte code
 			_newCharHi = HIBYTE(_newChar);
 			_newChar = LOBYTE(_newChar);
 
 			prepareUnicodeEvent(keyEvent[0], _newChar, true);
 			prepareUnicodeEvent(keyEvent[1], _newChar, false);
-			SendInput(2, keyEvent, sizeof(INPUT));
+			queueInput(2, keyEvent);
 
 			if (_newCharHi > 32) {
 				if (vCodeTable == 2) //VNI
 					InsertKeyLength(2);
 				prepareUnicodeEvent(keyEvent[0], _newCharHi, true);
 				prepareUnicodeEvent(keyEvent[1], _newCharHi, false);
-				SendInput(2, keyEvent, sizeof(INPUT));
+				queueInput(2, keyEvent);
 			} else {
 				if (vCodeTable == 2) //VNI
 					InsertKeyLength(1);
@@ -253,54 +340,42 @@ static void SendKeyCode(Uint32 data) {
 			InsertKeyLength(_newCharHi > 0 ? 2 : 1);
 			prepareUnicodeEvent(keyEvent[0], _uniChar[0], true);
 			prepareUnicodeEvent(keyEvent[1], _uniChar[0], false);
-			SendInput(2, keyEvent, sizeof(INPUT));
+			queueInput(2, keyEvent);
 			if (_newCharHi > 0) {
 				prepareUnicodeEvent(keyEvent[0], _uniChar[1], true);
 				prepareUnicodeEvent(keyEvent[1], _uniChar[1], false);
-				SendInput(2, keyEvent, sizeof(INPUT));
+				queueInput(2, keyEvent);
 			}
 		}
 	}
+}
+
+static void queueExtraBackspaces() {
+    if (!tracksCharacterLength() || _syncKey.empty()) return;
+    for (unsigned extra = 1; extra < _syncKey.back(); ++extra) queueInput(2, backspaceEvent);
+    _syncKey.pop_back();
 }
 
 static void SendBackspace() {
-	SendInput(2, backspaceEvent, sizeof(INPUT));
-	if (vSupportMetroApp && VietTypeHelper::getLastAppExecuteName().compare("ApplicationFrameHost.exe") == 0) {//Metro App
-		SendMessage(HWND_BROADCAST, WM_CHAR, VK_BACK, 0L);
-		SendMessage(HWND_BROADCAST, WM_CHAR, VK_BACK, 0L);
-	}
-	if (IS_DOUBLE_CODE(vCodeTable)) { //VNI or Unicode Compound
-		if (_syncKey.back() > 1) {
-			/*if (!(vCodeTable == 3 && containUnicodeCompoundApp(FRONT_APP))) {
-				SendInput(2, backspaceEvent, sizeof(INPUT));
-			}*/
-			SendInput(2, backspaceEvent, sizeof(INPUT));
-			if (vSupportMetroApp && VietTypeHelper::getLastAppExecuteName().compare("ApplicationFrameHost.exe") == 0) {//Metro App
-				SendMessage(HWND_BROADCAST, WM_CHAR, VK_BACK, 0L);
-				SendMessage(HWND_BROADCAST, WM_CHAR, VK_BACK, 0L);
-			}
-		}
-		_syncKey.pop_back();
-	}
+    queueInput(2, backspaceEvent);
+    queueExtraBackspaces();
 }
 
 static void SendEmptyCharacter() {
-	if (IS_DOUBLE_CODE(vCodeTable)) //VNI or Unicode Compound
+	if (tracksCharacterLength()) //VNI or Unicode Compound
 		InsertKeyLength(1);
 
 	_newChar = 0x202F; //empty char
 
 	prepareUnicodeEvent(keyEvent[0], _newChar, true);
 	prepareUnicodeEvent(keyEvent[1], _newChar, false);
-	SendInput(2, keyEvent, sizeof(INPUT));
+	queueInput(2, keyEvent);
 }
 
 static void SendNewCharString(const bool& dataFromMacro = false) {
 	_j = 0;
 	_newCharSize = dataFromMacro ? (Uint16)pData->macroData.size() : pData->newCharCount;
-	if (_newCharString.size() < _newCharSize) {
-		_newCharString.resize(_newCharSize);
-	}
+	_newCharString.resize(static_cast<size_t>(_newCharSize) * 2 + 2);
 	_willSendControlKey = false;
 	
 	if (_newCharSize > 0) {
@@ -311,11 +386,11 @@ static void SendNewCharString(const bool& dataFromMacro = false) {
 			_tempChar = DYNA_DATA(dataFromMacro, _k);
 			if (_tempChar & PURE_CHARACTER_MASK) {
 				_newCharString[_j++] = _tempChar;
-				if (IS_DOUBLE_CODE(vCodeTable)) {
+				if (tracksCharacterLength()) {
 					InsertKeyLength(1);
 				}
 			} else if (!(_tempChar & CHAR_CODE_MASK)) {
-				if (IS_DOUBLE_CODE(vCodeTable)) //VNI
+				if (tracksCharacterLength()) //VNI
 					InsertKeyLength(1);
 				_newCharString[_j++] = keyCodeToCharacter(_tempChar);
 			} else {
@@ -365,7 +440,11 @@ static void SendNewCharString(const bool& dataFromMacro = false) {
 		startNewSession();
 	}
 
-	VietTypeHelper::setClipboardText((LPCTSTR)_newCharString.data(), _newCharSize + 1, CF_UNICODETEXT);
+	_newCharString[_j] = 0;
+	if (!VietTypeHelper::setClipboardText(reinterpret_cast<LPCTSTR>(_newCharString.data()), _j + 1, CF_UNICODETEXT)) {
+		inputPreparationFailed = true;
+		return;
+	}
 
 	//Send shift + insert
 	SendCombineKey(KEY_LEFT_SHIFT, VK_INSERT, 0, KEYEVENTF_EXTENDEDKEY);
@@ -402,22 +481,20 @@ void switchLanguage() {
 		vLanguage = 0;
 	if (HAS_BEEP(vSwitchKeyStatus))
 		MessageBeep(MB_OK);
-	AppDelegate::getInstance()->onInputMethodChangedFromHotKey();
-	if (vUseSmartSwitchKey) {
-		setAppInputMethodStatus(VietTypeHelper::getFrontMostAppExecuteName(), vLanguage | (vCodeTable << 1));
-		saveSmartSwitchKeyData();
-	}
+	PostMessage(SystemTrayHelper::findRunningWindow(), inputModeChanged, vLanguage | (vCodeTable << 1),
+		reinterpret_cast<LPARAM>(GetForegroundWindow()));
 	startNewSession();
 }
 
 static void SendPureCharacter(const Uint16& ch) {
-	if (ch < 128)
+	if (usesExtendedEncoding() && ch >= 128) sendExtendedCharacter(ch);
+	else if (ch < 128)
 		SendKeyCode(ch);
 	else {
 		prepareUnicodeEvent(keyEvent[0], ch, true);
 		prepareUnicodeEvent(keyEvent[1], ch, false);
-		SendInput(2, keyEvent, sizeof(INPUT));
-		if (IS_DOUBLE_CODE(vCodeTable)) {
+		queueInput(2, keyEvent);
+		if (tracksCharacterLength()) {
 			InsertKeyLength(1);
 		}
 	}
@@ -437,7 +514,7 @@ static void handleMacro() {
 		}
 	}
 	//send real data
-	if (!vSendKeyStepByStep) {
+	if (useClipboardForInput()) {
 		SendNewCharString(true);
 	} else {
 		for (int i = 0; i < pData->macroData.size(); i++) {
@@ -486,18 +563,10 @@ static bool UnsetModifierMask(const Uint16& vkCode) {
 	return true;
 }
 
-LRESULT CALLBACK keyboardHookProcess(int nCode, WPARAM wParam, LPARAM lParam) {
+static LRESULT processKey(int nCode, WPARAM wParam, LPARAM lParam) {
 	keyboardData = (KBDLLHOOKSTRUCT *)lParam;
 	//ignore my event
 	if (keyboardData->dwExtraInfo != 0) {
-		return CallNextHookEx(hKeyboardHook, nCode, wParam, lParam);
-	}
-	
-	//ignore if IME pad is open when typing Japanese/Chinese...
-	HWND hWnd = GetForegroundWindow();
-	HWND hIME = ImmGetDefaultIMEWnd(hWnd);
-	LRESULT isImeON = SendMessage(hIME, WM_IME_CONTROL, IMC_GETOPENSTATUS, 0);
-	if (isImeON) {
 		return CallNextHookEx(hKeyboardHook, nCode, wParam, lParam);
 	}
 	
@@ -524,7 +593,7 @@ LRESULT CALLBACK keyboardHookProcess(int nCode, WPARAM wParam, LPARAM lParam) {
 				return -1;
 			}
 			if (GET_SWITCH_KEY(convertToolHotKey) == _keycode && checkHotKey(convertToolHotKey, GET_SWITCH_KEY(convertToolHotKey) != 0xFE)) {
-				AppDelegate::getInstance()->onQuickConvert();
+				PostMessage(SystemTrayHelper::findRunningWindow(), quickConvertRequested, 0, 0);
 				_hasJustUsedHotKey = true;
 				_keycode = 0;
 				return -1;
@@ -541,7 +610,7 @@ LRESULT CALLBACK keyboardHookProcess(int nCode, WPARAM wParam, LPARAM lParam) {
 				_hasJustUsedHotKey = true;
 			}
 			if (checkHotKey(convertToolHotKey, GET_SWITCH_KEY(convertToolHotKey) != 0xFE)) {
-				AppDelegate::getInstance()->onQuickConvert();
+				PostMessage(SystemTrayHelper::findRunningWindow(), quickConvertRequested, 0, 0);
 				_hasJustUsedHotKey = true;
 			}
 			//check temporarily turn off spell checking
@@ -568,7 +637,7 @@ LRESULT CALLBACK keyboardHookProcess(int nCode, WPARAM wParam, LPARAM lParam) {
 
 			if (pData->code == vReplaceMaro) { //handle macro in english mode
 				handleMacro();
-				return NULL;
+				return -1;
 			}
 		}
 		return CallNextHookEx(hKeyboardHook, nCode, wParam, lParam);
@@ -583,17 +652,11 @@ LRESULT CALLBACK keyboardHookProcess(int nCode, WPARAM wParam, LPARAM lParam) {
 						(_flag & MASK_SHIFT && _flag & MASK_CAPITAL) ? 0 : (_flag & MASK_SHIFT ? 1 : (_flag & MASK_CAPITAL ? 2 : 0)),
 						OTHER_CONTROL_KEY);
 		if (pData->code == vDoNothing) { //do nothing
-			if (IS_DOUBLE_CODE(vCodeTable)) { //VNI
+			if (tracksCharacterLength()) { //VNI
 				if (pData->extCode == 1) { //break key
 					_syncKey.clear();
 				} else if (pData->extCode == 2) { //delete key
-					if (_syncKey.size() > 0) {
-						if (_syncKey.back() > 1 && (vCodeTable == 2 || vCodeTable == 3)) {
-							//send one more backspace
-							SendInput(2, backspaceEvent, sizeof(INPUT));
-						}
-						_syncKey.pop_back();
-					}
+                    queueExtraBackspaces();
 				} else if (pData->extCode == 3) { //normal key
 					InsertKeyLength(1);
 				}
@@ -602,8 +665,7 @@ LRESULT CALLBACK keyboardHookProcess(int nCode, WPARAM wParam, LPARAM lParam) {
 		} else if (pData->code == vWillProcess || pData->code == vRestore || pData->code == vRestoreAndStartNewSession) { //handle result signal
 			//fix autocomplete
 			if (vFixRecommendBrowser && pData->extCode != 4) {
-				if (vFixChromiumBrowser && 
-					std::find(_chromiumBrowser.begin(), _chromiumBrowser.end(), VietTypeHelper::getLastAppExecuteName()) != _chromiumBrowser.end()) {
+				if (vFixChromiumBrowser && isChromiumForeground) {
 					SendCombineKey(KEY_LEFT_SHIFT, KEY_LEFT, 0, KEYEVENTF_EXTENDEDKEY);
 					if (pData->backspaceCount == 1)
 						pData->backspaceCount--;
@@ -621,7 +683,7 @@ LRESULT CALLBACK keyboardHookProcess(int nCode, WPARAM wParam, LPARAM lParam) {
 			}
 
 			//send new character
-			if (!vSendKeyStepByStep) {
+			if (useClipboardForInput()) {
 				SendNewCharString();
 			} else {
 				if (pData->newCharCount > 0 && pData->newCharCount <= MAX_BUFF) {
@@ -644,7 +706,57 @@ LRESULT CALLBACK keyboardHookProcess(int nCode, WPARAM wParam, LPARAM lParam) {
 	return CallNextHookEx(hKeyboardHook, nCode, wParam, lParam);
 }
 
+static void releasePartialInput(UINT sent) {
+	std::vector<INPUT> pressed;
+	for (UINT i = 0; i < sent; ++i) {
+		const auto& input = pendingInput[i];
+		if (!(input.ki.dwFlags & KEYEVENTF_KEYUP)) {
+			pressed.push_back(input);
+			continue;
+		}
+		const auto match = std::find_if(pressed.rbegin(), pressed.rend(), [&](const INPUT& key) {
+			return key.ki.wVk == input.ki.wVk && key.ki.wScan == input.ki.wScan &&
+			       key.ki.dwFlags == (input.ki.dwFlags & ~KEYEVENTF_KEYUP);
+		});
+		if (match != pressed.rend()) pressed.erase(std::prev(match.base()));
+	}
+	for (auto& input : pressed) input.ki.dwFlags |= KEYEVENTF_KEYUP;
+	std::reverse(pressed.begin(), pressed.end());
+	if (!pressed.empty()) {
+		// Best-effort release of keys Windows accepted before the batch was interrupted.
+		const UINT released = SendInput(static_cast<UINT>(pressed.size()), pressed.data(), sizeof(INPUT));
+		if (released != pressed.size()) OutputDebugStringW(L"VietType: unable to release all injected keys.\n");
+	}
+}
+
+LRESULT CALLBACK keyboardHookProcess(int nCode, WPARAM wParam, LPARAM lParam) {
+	if (nCode != HC_ACTION || !lParam || reinterpret_cast<const KBDLLHOOKSTRUCT*>(lParam)->dwExtraInfo != 0) {
+		return CallNextHookEx(hKeyboardHook, nCode, wParam, lParam);
+	}
+	if (GetForegroundWindow() != imeForeground || !imeAllowsTyping) {
+		_lastFlag = 0;
+		if (wParam == WM_KEYDOWN || wParam == WM_SYSKEYDOWN) SetModifierMask(reinterpret_cast<const KBDLLHOOKSTRUCT*>(lParam)->vkCode);
+		if (wParam == WM_KEYUP || wParam == WM_SYSKEYUP) UnsetModifierMask(reinterpret_cast<const KBDLLHOOKSTRUCT*>(lParam)->vkCode);
+		return CallNextHookEx(hKeyboardHook, nCode, wParam, lParam);
+	}
+	pendingInput.clear();
+	inputPreparationFailed = false;
+	const auto result = processKey(nCode, wParam, lParam);
+	if (!inputPreparationFailed) {
+		if (pendingInput.empty()) return result;
+		const UINT sent = SendInput(static_cast<UINT>(pendingInput.size()), pendingInput.data(), sizeof(INPUT));
+		if (sent == pendingInput.size()) return result;
+		if (sent != 0) releasePartialInput(sent);
+	}
+
+	startNewSession();
+	_syncKey.clear();
+	PostMessage(SystemTrayHelper::findRunningWindow(), inputDeliveryFailed, 0, 0);
+	return result == -1 ? CallNextHookEx(hKeyboardHook, nCode, wParam, lParam) : result;
+}
+
 LRESULT CALLBACK mouseHookProcess(int nCode, WPARAM wParam, LPARAM lParam) {
+	if (nCode != HC_ACTION) return CallNextHookEx(hMouseHook, nCode, wParam, lParam);
 	mouseData = (MSLLHOOKSTRUCT *)lParam;
 	switch (wParam) {
 	case WM_LBUTTONDOWN:
@@ -660,7 +772,7 @@ LRESULT CALLBACK mouseHookProcess(int nCode, WPARAM wParam, LPARAM lParam) {
 	case WM_NCXBUTTONUP:
 		//send event signal to Engine
 		vKeyHandleEvent(vKeyEvent::Mouse, vKeyEventState::MouseDown, 0);
-		if (IS_DOUBLE_CODE(vCodeTable)) { //VNI
+		if (tracksCharacterLength()) { //VNI
 			_syncKey.clear();
 		}
 		break;
@@ -669,6 +781,9 @@ LRESULT CALLBACK mouseHookProcess(int nCode, WPARAM wParam, LPARAM lParam) {
 }
 
 VOID CALLBACK winEventProcCallback(HWINEVENTHOOK hWinEventHook, DWORD dwEvent, HWND hwnd, LONG idObject, LONG idChild, DWORD dwEventThread, DWORD dwmsEventTime) {
+	VietTypeManager::refreshImeStatus();
+	startNewSession();
+	_syncKey.clear();
 	//smart switch key
 	if (vUseSmartSwitchKey || vRememberCode) {
 		string& exe = VietTypeHelper::getFrontMostAppExecuteName();
@@ -678,13 +793,12 @@ VOID CALLBACK winEventProcCallback(HWINEVENTHOOK hWinEventHook, DWORD dwEvent, H
 		vTempOffEngine(false);
 		if (vUseSmartSwitchKey && (_languageTemp & 0x01) != vLanguage) {
 			if (_languageTemp != -1) {
-				vLanguage = _languageTemp;
+				vLanguage = _languageTemp & 1;
 				AppDelegate::getInstance()->onInputMethodChangedFromHotKey();
 			} else {
 				saveSmartSwitchKeyData();
 			}
 		}
-		startNewSession();
 		if (vRememberCode && (_languageTemp >> 1) != vCodeTable) { //for remember table code feature
 			if (_languageTemp != -1) {
 				AppDelegate::getInstance()->onTableCode(_languageTemp >> 1);
@@ -692,9 +806,6 @@ VOID CALLBACK winEventProcCallback(HWINEVENTHOOK hWinEventHook, DWORD dwEvent, H
 				saveSmartSwitchKeyData();
 			}
 		}
-		if (vSupportMetroApp && exe.compare("ApplicationFrameHost.exe") == 0) {//Metro App
-			SendMessage(HWND_BROADCAST, WM_CHAR, VK_BACK, 0L);
-			SendMessage(HWND_BROADCAST, WM_CHAR, VK_BACK, 0L);
-		}
+
 	}
 }

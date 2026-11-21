@@ -60,6 +60,7 @@ extern int vFreeMark;
  * 2: VNI-Windows
  */
 extern int vCodeTable;
+inline int engineCodeTable() { return vCodeTable >= 0 && vCodeTable < 5 ? vCodeTable : 0; }
 
 /*
  * first 8 bit: keycode

@@ -9,6 +9,7 @@ You can fork, modify, improve this program. If you
 redistribute your new version, it MUST be open source.
 -----------------------------------------------------------*/
 #include "VietTypeHelper.h"
+#include "../../engine/ClipboardEncoding.h"
 #include <stdarg.h>
 #include <fstream>
 #include <sstream>
@@ -187,17 +188,52 @@ wstring VietTypeHelper::getClipboardText(const int& type) {
 	return text;
 }
 
-void VietTypeHelper::setClipboardText(LPCTSTR data, const int & len, const int& type) {
-	HGLOBAL hMem = GlobalAlloc(GMEM_MOVEABLE, len * sizeof(WCHAR));
-	memcpy(GlobalLock(hMem), data, len * sizeof(WCHAR));
-	GlobalUnlock(hMem);
-	OpenClipboard(0);
-	EmptyClipboard();
-	SetClipboardData(type, hMem);
+bool VietTypeHelper::setClipboardText(LPCTSTR data, const int& len, const int& type) {
+	const auto size = static_cast<SIZE_T>(len) * sizeof(WCHAR);
+	const HGLOBAL buffer = GlobalAlloc(GMEM_MOVEABLE, size);
+	if (!buffer) return false;
+	void* const memory = GlobalLock(buffer);
+	if (!memory) {
+		GlobalFree(buffer);
+		return false;
+	}
+	memcpy(memory, data, size);
+	GlobalUnlock(buffer);
+	if (!OpenClipboard(SystemTrayHelper::findRunningWindow())) {
+		GlobalFree(buffer);
+		return false;
+	}
+	const bool written = EmptyClipboard() && SetClipboardData(type, buffer);
 	CloseClipboard();
+	if (!written) GlobalFree(buffer);
+	return written;
 }
 
 bool VietTypeHelper::quickConvert() {
+    if (convertToolFromCode >= 5 || convertToolToCode >= 5) {
+        if (!OpenClipboard(nullptr)) return false;
+        const HANDLE data = GetClipboardData(CF_UNICODETEXT);
+        std::wstring original;
+        bool read = false;
+        if (data) {
+            const auto size = GlobalSize(data) / sizeof(wchar_t);
+            if (const auto text = static_cast<const wchar_t*>(GlobalLock(data))) {
+                const auto length = wcsnlen_s(text, size);
+                if (length < size) {
+                    original.assign(text, length);
+                    read = true;
+                }
+                GlobalUnlock(data);
+            }
+        }
+        const DWORD sequence = GetClipboardSequenceNumber();
+        CloseClipboard();
+        if (!read) return false;
+        const auto result = convertClipboardEncoding(original, convertToolFromCode, convertToolToCode);
+        if (!result || result->size() >= INT_MAX || sequence != GetClipboardSequenceNumber()) return false;
+        return setClipboardText(result->c_str(), static_cast<int>(result->size() + 1), CF_UNICODETEXT);
+    }
+
 	//read data from clipboard
 	//support Unicode raw string, Rich Text Format and HTML
 

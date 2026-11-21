@@ -29,6 +29,7 @@ public:
 	ConvertToolDialog(const HINSTANCE & hInstance, const int & resourceId);
 	~ConvertToolDialog();
 	virtual void fillData() override;
+    void refreshLanguage();
 public: //event
 	void onSwitchButton();
 	void onConvertButton();

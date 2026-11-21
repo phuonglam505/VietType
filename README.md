@@ -1,8 +1,8 @@
 # VietType
 
-VietType là bộ gõ tiếng Việt cho Windows 64-bit, chạy trực tiếp bằng tệp `VietType.exe`. Ứng dụng có sáu kiểu gõ, 18 bảng mã, gõ tắt, chuyển mã qua clipboard và cập nhật từ GitHub.
+VietType 2026 là bộ gõ tiếng Việt cho Windows 64-bit, chạy trực tiếp bằng tệp `VietType.exe`. Ứng dụng có sáu kiểu gõ, 18 bảng mã, gõ tắt, chuyển mã qua clipboard và cập nhật từ GitHub.
 
-Hướng dẫn và ảnh bên dưới mô tả **VietType 0.2.18**. Bản công khai mới nhất trên GitHub hiện là **0.2.12**. Một số mục trong hướng dẫn có thể chưa xuất hiện ở bản tải công khai. [Xem các bản phát hành](https://github.com/phuonglam505/VietType/releases)
+[Tải VietType cho Windows x64](https://github.com/phuonglam505/VietType/releases/latest)
 
 ![Cửa sổ chính VietType với các lựa chọn kiểu gõ, bảng mã và chế độ Việt/Anh](docs/images/viettype-main.png)
 
@@ -75,6 +75,10 @@ Có thể bật gõ tắt trong chế độ tiếng Anh và đổi kiểu viết
 
 Công cụ còn hỗ trợ chuyển chữ HOA, chữ thường, viết hoa đầu câu, viết hoa từng từ, bỏ dấu tiếng Việt và thông báo sau khi chuyển. Đặt **Phím chuyển mã nhanh** trong công cụ, hoặc chọn **Chuyển mã nhanh** ở menu khay để dùng lại cấu hình vừa lưu. Các bảng mã mở rộng được chuyển qua văn bản thuần trong clipboard.
 
+## Ngôn ngữ giao diện
+
+Trong tab **Hệ thống**, tích **English** để đổi ngay giao diện sang tiếng Anh. Bỏ tích để trở về tiếng Việt. Tiếng Việt là mặc định. Lựa chọn được lưu riêng với chế độ gõ Việt/Anh.
+
 ## Tùy chọn Windows và menu khay
 
 Tab **Hệ thống** có các tùy chọn:
@@ -97,11 +101,11 @@ Các tùy chọn và bảng gõ tắt được lưu theo tài khoản Windows, n
 
 ## Mã nguồn, giấy phép và build
 
-VietType có sử dụng mã nguồn OpenKey. Phần chuyển mã mở rộng của 0.2.18 dùng VnConv từ UniKey, được biên dịch cùng ứng dụng. [Giấy phép VietType](LICENSE) · [OpenKey](https://open-key.org/) · [UniKey](https://www.unikey.org/) · [Nguồn VnConv](https://github.com/fcitx/fcitx-unikey/tree/2ea5bee3a3209a76b0de330cb63f574d9e82e5cb/unikey)
+VietType có sử dụng mã nguồn **OpenKey**. Phần chuyển mã mở rộng dùng **VnConv từ UniKey**, được biên dịch cùng ứng dụng. Xem [giấy phép VietType](LICENSE) và [nguồn gốc, giấy phép VnConv](third_party/vnconv/README.md).
 
 - `engine/` chứa lõi gõ, gõ tắt và chuyển mã.
 - `win32/VietType/` chứa giao diện, tích hợp bàn phím Windows, khay hệ thống và cập nhật.
-- Trong mã nguồn 0.2.18, `third_party/vnconv/` chứa mã chuyển đổi bảng mã mở rộng.
+- `third_party/vnconv/` chứa mã chuyển đổi bảng mã mở rộng.
 
 ### Build Release x64
 
@@ -115,4 +119,4 @@ cmake --build build --config Release
 
 ### Phát hành trên GitHub
 
-Cập nhật số phiên bản trong `CMakeLists.txt` và `win32/VietType/VietType.rc` trước khi build. Tạo Release chính thức từ đúng commit bằng tag `vX.Y.Z`, ví dụ `v0.2.18`, và đính kèm tệp Windows x64 với tên `VietType.exe`. Giữ mã nguồn và giấy phép trong cùng tag.
+Cập nhật số phiên bản trong `CMakeLists.txt` và `win32/VietType/VietType.rc` trước khi build. Tạo Release chính thức từ đúng commit bằng tag `vX.Y.Z`, ví dụ `v2026.11.0`, và đính kèm tệp Windows x64 với tên `VietType.exe`. Giữ mã nguồn và giấy phép trong cùng tag.
