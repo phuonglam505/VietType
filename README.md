@@ -79,6 +79,8 @@ Công cụ còn hỗ trợ chuyển chữ HOA, chữ thường, viết hoa đầ
 
 Trong tab **Hệ thống**, tích **English** để đổi ngay giao diện sang tiếng Anh. Bỏ tích để trở về tiếng Việt. Tiếng Việt là mặc định. Lựa chọn được lưu riêng với chế độ gõ Việt/Anh.
 
+![Giao diện tiếng Anh của VietType 2026.11.1 với nhãn Input method trên một dòng](docs/images/viettype-main-english.png)
+
 ## Tùy chọn Windows và menu khay
 
 Tab **Hệ thống** có các tùy chọn:
@@ -119,4 +121,4 @@ cmake --build build --config Release
 
 ### Phát hành trên GitHub
 
-Cập nhật số phiên bản trong `CMakeLists.txt` và `win32/VietType/VietType.rc` trước khi build. Tạo Release chính thức từ đúng commit bằng tag `vX.Y.Z`, ví dụ `v2026.11.0`, và đính kèm tệp Windows x64 với tên `VietType.exe`. Giữ mã nguồn và giấy phép trong cùng tag.
+Cập nhật số phiên bản trong `CMakeLists.txt` và `win32/VietType/VietType.rc` trước khi build. Tạo Release chính thức từ đúng commit bằng tag `vX.Y.Z`, ví dụ `v2026.11.1`, và đính kèm tệp Windows x64 với tên `VietType.exe`. Giữ mã nguồn và giấy phép trong cùng tag.

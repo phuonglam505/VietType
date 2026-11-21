@@ -201,8 +201,8 @@ END
 //
 
 VS_VERSION_INFO VERSIONINFO
- FILEVERSION 2026,11,0,0
- PRODUCTVERSION 2026,11,0,0
+ FILEVERSION 2026,11,1,0
+ PRODUCTVERSION 2026,11,1,0
  FILEFLAGSMASK 0x3fL
 #ifdef _DEBUG
  FILEFLAGS 0x1L
@@ -219,12 +219,12 @@ BEGIN
         BEGIN
             VALUE "CompanyName", "VietType"
             VALUE "FileDescription", "VietType - Bộ gõ tiếng Việt"
-            VALUE "FileVersion", "2026.11.0.0"
+            VALUE "FileVersion", "2026.11.1.0"
             VALUE "InternalName", "VietType.exe"
             VALUE "LegalCopyright", "Copyright (C) 2019 - Mai Vũ Tuyên"
             VALUE "OriginalFilename", "VietType.exe"
             VALUE "ProductName", "VietType"
-            VALUE "ProductVersion", "2026.11.0.0"
+            VALUE "ProductVersion", "2026.11.1.0"
         END
     END
     BLOCK "VarFileInfo"
@@ -346,7 +346,7 @@ FONT 9, "Segoe UI"
 BEGIN
     GROUPBOX        "Điều khiển bộ gõ",IDC_STATIC,7,5,334,59
     ICON            IDI_APP_ICON,IDC_VT_MODE_ICON,12,22,21,21
-    LTEXT           "&Kiểu gõ",IDC_STATIC,36,19,36,12
+    CONTROL         "&Kiểu gõ",IDC_STATIC,"Static",SS_LEFTNOWORDWRAP,36,19,54,12
     COMBOBOX        IDC_VT_METHOD,91,16,127,128,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
     LTEXT           "&Bảng mã",IDC_STATIC,225,19,41,12
     COMBOBOX        IDC_VT_CHARSET,269,16,63,105,CBS_DROPDOWNLIST | WS_VSCROLL | WS_TABSTOP
