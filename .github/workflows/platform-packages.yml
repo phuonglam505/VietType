@@ -60,7 +60,7 @@ jobs:
         run: |
           cmake -S vnkey-macos -B mac-build -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES='arm64;x86_64' -DVIETTYPE_ENGINE_ARCHIVE="$PWD/mac-package/libvnkey_engine.a"
           cmake --build mac-build --parallel
-          lipo -verify_arch arm64 x86_64 mac-build/VietType.app/Contents/MacOS/VietType
+          lipo mac-build/VietType.app/Contents/MacOS/VietType -verify_arch arm64 x86_64
           codesign --verify --deep --strict mac-build/VietType.app
       - name: Create the disk image
         run: |
