@@ -5,7 +5,7 @@
  * SPDX-License-Identifier: GPL-3.0-or-later
  */
 
-#include "viettype-fcitx5.h"
+#include "vnkey-fcitx5.h"
 
 #include <fcitx/inputcontext.h>
 #include <fcitx/inputpanel.h>
