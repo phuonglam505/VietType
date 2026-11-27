@@ -163,19 +163,16 @@ public:
         layout->setSpacing(9);
 
         auto *banner = new QWidget(this);
-        banner->setStyleSheet(QStringLiteral(
-            "QWidget#brandBanner { background: #78213f; border-radius: 7px; }"
-            "QWidget#brandBanner QLabel { color: white; }"));
-        banner->setObjectName(QStringLiteral("brandBanner"));
         auto *title = new QLabel(tr("VietType - bộ gõ tiếng Việt"), banner);
+        title->setStyleSheet(QStringLiteral("color: #78213f;"));
         QFont titleFont = title->font();
         titleFont.setPointSize(17);
         titleFont.setBold(true);
         title->setFont(titleFont);
         auto *header = new QHBoxLayout(banner);
-        header->setContentsMargins(11, 9, 11, 9);
+        header->setContentsMargins(0, 9, 0, 9);
         auto *logo = new QLabel(banner);
-        logo->setPixmap(QApplication::windowIcon().pixmap(QSize(28, 28), devicePixelRatioF()));
+        logo->setPixmap(QApplication::windowIcon().pixmap(QSize(38, 38), devicePixelRatioF()));
         header->addWidget(logo);
         header->addWidget(title);
         header->addStretch();

@@ -118,10 +118,14 @@ fn build_html(im: i32, cs: i32, spell: bool, free: bool, modern: bool,
 
     let body = format!(r##"
 <div class="container">
-  <div style="display:flex;align-items:center;gap:11px;background:#78213f;color:#fff;padding:9px 11px;border-radius:7px">
-    <div aria-hidden="true" style="width:34px;height:34px;border:1px solid #d296ac;border-radius:6px;display:grid;place-items:center;font-weight:700;font-size:16px;flex-shrink:0">V</div>
-    <strong style="font-size:17px;line-height:1.2">VietType - bộ gõ tiếng Việt</strong>
-    <span style="margin-left:auto;color:#ffe4ee;white-space:nowrap">{ver}</span>
+  <div style="display:flex;align-items:center;gap:11px;padding:9px 0">
+    <svg aria-hidden="true" width="38" height="38" viewBox="0 0 128 128" style="flex-shrink:0">
+      <rect x="4" y="4" width="120" height="120" rx="28" fill="#78213f"/>
+      <path d="M23 43h16l25 49 25-49h16l-33 63H56z" fill="#fff4f7"/>
+      <path d="m55 38 12-17h15L68 38z" fill="#ffd257"/>
+    </svg>
+    <strong style="font-size:17px;line-height:1.2;color:#78213f">VietType - bộ gõ tiếng Việt</strong>
+    <span style="margin-left:auto;color:var(--text-dim);white-space:nowrap">{ver}</span>
   </div>
     <div class="row" style="gap:8px">
       <div class="group">
