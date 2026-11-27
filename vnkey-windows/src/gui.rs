@@ -162,9 +162,8 @@ fn build_html(im: i32, cs: i32, spell: bool, free: bool, modern: bool,
       <button onclick="cmd({{cmd:'info'}})">Giới thiệu</button>
     </div>
   </section>
-  <div style="display:flex;justify-content:flex-end;gap:8px">
-    <button class="primary" onclick="cmd({{cmd:'close'}})">Đóng</button>
-    <button class="danger" onclick="cmd({{cmd:'exit'}})">Thoát VietType</button>
+  <div style="display:flex;justify-content:flex-end">
+    <button onclick="cmd({{cmd:'close'}})">Đóng</button>
   </div>
 </div>
 "##,
@@ -263,16 +262,6 @@ fn handle_settings_command(body: &str, fallback_owner: Option<isize>, close: imp
         "appcs" => { crate::app_charset::open_app_charset_window(owner); }
         "info" => { crate::info::open_info_window(owner); }
         "close" => close(),
-        "exit" => {
-            use windows::Win32::Foundation::*;
-            use windows::Win32::UI::WindowsAndMessaging::*;
-            use windows::core::w;
-            unsafe {
-                if let Ok(mw) = FindWindowW(w!("VietTypeHiddenWindow"), w!("VietType")) {
-                    let _ = PostMessageW(mw, WM_CLOSE, WPARAM(0), LPARAM(0));
-                }
-            }
-        }
         _ => {}
     }
 }

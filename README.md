@@ -4,6 +4,8 @@ VietType là bộ gõ tiếng Việt mã nguồn mở phát triển từ [VnKey]
 
 ![Cửa sổ cài đặt VietType v2027.01 trên Windows](docs/screenshots/windows-settings.png)
 
+Nút **Đóng** thu cửa sổ về khay hệ thống để tiếp tục gõ. Để dừng ứng dụng, nhấp phải biểu tượng **V/E** và chọn **Thoát VietType**.
+
 ## Tải và cài đặt
 
 ### Windows 10/11 x64

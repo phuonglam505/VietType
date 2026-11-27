@@ -3,6 +3,7 @@
 #include <QCheckBox>
 #include <QComboBox>
 #include <QCoreApplication>
+#include <QCursor>
 #include <QDialog>
 #include <QFont>
 #include <QFormLayout>
@@ -18,6 +19,7 @@
 #include <QPainter>
 #include <QPainterPath>
 #include <QPushButton>
+#include <QScreen>
 #include <QStringList>
 #include <QVBoxLayout>
 #include <QWinEventNotifier>
@@ -44,7 +46,7 @@ void sendCommand(const char *command, QJsonValue value = {}, WId owner = 0)
         QCoreApplication::quit();
 }
 
-enum class ActionIcon { Check, Exit, Convert, Info, Macros, Keyboard, Exclude, Charset };
+enum class ActionIcon { Check, Convert, Info, Macros, Keyboard, Exclude, Charset };
 
 QIcon actionIcon(ActionIcon icon, const QColor &color)
 {
@@ -52,11 +54,6 @@ QIcon actionIcon(ActionIcon icon, const QColor &color)
     switch (icon) {
     case ActionIcon::Check:
         path.moveTo(3.5, 8); path.lineTo(6.5, 11); path.lineTo(12.5, 5);
-        break;
-    case ActionIcon::Exit:
-        path.moveTo(7, 2.5); path.lineTo(3, 2.5); path.lineTo(3, 13.5); path.lineTo(7, 13.5);
-        path.moveTo(6, 8); path.lineTo(13.5, 8);
-        path.moveTo(10.5, 5); path.lineTo(13.5, 8); path.lineTo(10.5, 11);
         break;
     case ActionIcon::Convert:
         path.moveTo(2.5, 5); path.lineTo(13, 5);
@@ -266,12 +263,6 @@ public:
         actions->addWidget(about);
         connect(about, &QPushButton::clicked, this, [this] { sendCommand("info", {}, winId()); });
         actions->addStretch();
-        auto *exitApp = makeButton(tr("Thoát VietType"), ActionIcon::Exit);
-        actions->addWidget(exitApp);
-        connect(exitApp, &QPushButton::clicked, this, [this] {
-            sendCommand("exit");
-            close();
-        });
     }
 };
 } // namespace
@@ -301,6 +292,15 @@ int main(int argc, char *argv[])
         QObject::connect(&engineExit, &QWinEventNotifier::activated, &app, &QApplication::quit);
         SettingsDialog dialog(initial.object());
         if (sendLine("ready")) {
+            auto *screen = QGuiApplication::screenAt(QCursor::pos());
+            if (!screen)
+                screen = QGuiApplication::primaryScreen();
+            if (screen) {
+                dialog.adjustSize();
+                QRect frame = dialog.frameGeometry();
+                frame.moveCenter(screen->availableGeometry().center());
+                dialog.move(frame.topLeft());
+            }
             dialog.show();
             result = app.exec();
         }

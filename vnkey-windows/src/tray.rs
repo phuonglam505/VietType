@@ -312,7 +312,7 @@ fn show_context_menu(hwnd: HWND) {
         AppendMenuW(menu, MF_SEPARATOR, 0, None).ok();
 
         // Thoát
-        AppendMenuW(menu, MF_STRING, IDM_EXIT as usize, w!("Thoát")).ok();
+        AppendMenuW(menu, MF_STRING, IDM_EXIT as usize, w!("Thoát VietType")).ok();
 
         // Hiện menu tại vị trí con trỏ
         let mut pt = windows::Win32::Foundation::POINT::default();

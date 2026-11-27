@@ -7,10 +7,10 @@ use tao::event_loop::{ControlFlow, EventLoopBuilder, EventLoopProxy};
 use tao::platform::run_return::EventLoopExtRunReturn;
 use tao::platform::windows::{EventLoopBuilderExtWindows, WindowExtWindows};
 use tao::window::WindowBuilder;
-use windows::Win32::Foundation::{HWND, RECT};
-use windows::Win32::Graphics::Gdi::{GetMonitorInfoW, MonitorFromWindow, MONITORINFO, MONITOR_DEFAULTTONEAREST};
+use windows::Win32::Foundation::{HWND, POINT, RECT};
+use windows::Win32::Graphics::Gdi::{GetMonitorInfoW, MonitorFromPoint, MonitorFromWindow, MONITORINFO, MONITOR_DEFAULTTONEAREST};
 use windows::Win32::UI::WindowsAndMessaging::{
-    GetWindowRect, IsWindowVisible, SetWindowPos, SWP_NOACTIVATE, SWP_NOSIZE, SWP_NOZORDER,
+    GetCursorPos, GetWindowRect, IsWindowVisible, SetWindowPos, SWP_NOACTIVATE, SWP_NOSIZE, SWP_NOZORDER,
 };
 use wry::WebViewBuilder;
 
@@ -106,9 +106,7 @@ where
             }
             Event::UserEvent(UiEvent::Show) => {
                 let hwnd = HWND(window.hwnd() as *mut std::ffi::c_void);
-                if let Some(owner) = owner {
-                    center_on_window(hwnd, HWND(owner as *mut std::ffi::c_void));
-                }
+                center_on_screen(hwnd, owner);
                 window.set_visible(true);
                 window.set_focus();
                 // SetForegroundWindow
@@ -122,36 +120,41 @@ where
     });
 }
 
-fn center_on_window(window: HWND, owner: HWND) {
-    let mut parent = RECT::default();
+fn center_on_screen(window: HWND, owner: Option<isize>) {
     let mut child = RECT::default();
     let mut monitor = MONITORINFO {
         cbSize: std::mem::size_of::<MONITORINFO>() as u32,
         ..Default::default()
     };
     unsafe {
-        if !IsWindowVisible(owner).as_bool()
-            || GetWindowRect(owner, &mut parent).is_err()
-            || GetWindowRect(window, &mut child).is_err()
-        {
+        if GetWindowRect(window, &mut child).is_err() {
             return;
         }
-        let bounds = MonitorFromWindow(owner, MONITOR_DEFAULTTONEAREST);
+        let owner = owner.map(|value| HWND(value as *mut std::ffi::c_void))
+            .filter(|&handle| IsWindowVisible(handle).as_bool());
+        let bounds = if let Some(owner) = owner {
+            MonitorFromWindow(owner, MONITOR_DEFAULTTONEAREST)
+        } else {
+            let mut cursor = POINT::default();
+            if GetCursorPos(&mut cursor).is_ok() {
+                MonitorFromPoint(cursor, MONITOR_DEFAULTTONEAREST)
+            } else {
+                MonitorFromWindow(window, MONITOR_DEFAULTTONEAREST)
+            }
+        };
         if GetMonitorInfoW(bounds, &mut monitor).as_bool() {
-            let (x, y) = centered_position(parent, child, monitor.rcWork);
+            let (x, y) = centered_position(child, monitor.rcWork);
             let _ = SetWindowPos(window, None, x, y, 0, 0, SWP_NOACTIVATE | SWP_NOSIZE | SWP_NOZORDER);
         }
     }
 }
 
-fn centered_position(parent: RECT, child: RECT, work: RECT) -> (i32, i32) {
+fn centered_position(child: RECT, work: RECT) -> (i32, i32) {
     let width = child.right - child.left;
     let height = child.bottom - child.top;
-    let x = parent.left + (parent.right - parent.left - width) / 2;
-    let y = parent.top + (parent.bottom - parent.top - height) / 2;
     (
-        x.clamp(work.left, (work.right - width).max(work.left)),
-        y.clamp(work.top, (work.bottom - height).max(work.top)),
+        work.left + ((work.right - work.left - width) / 2).max(0),
+        work.top + ((work.bottom - work.top - height) / 2).max(0),
     )
 }
 
@@ -160,13 +163,12 @@ mod tests {
     use super::*;
 
     #[test]
-    fn centers_on_owner_and_keeps_dialog_in_monitor_work_area() {
+    fn centers_in_monitor_work_area_including_negative_coordinates() {
         let work = RECT { left: -1280, top: 0, right: 0, bottom: 680 };
         let child = RECT { left: 0, top: 0, right: 500, bottom: 440 };
-        let parent = RECT { left: -880, top: 120, right: -480, bottom: 540 };
-        assert_eq!(centered_position(parent, child, work), (-930, 110));
-        let edge = RECT { left: -400, top: 260, right: 0, bottom: 680 };
-        assert_eq!(centered_position(edge, child, work), (-500, 240));
+        assert_eq!(centered_position(child, work), (-890, 120));
+        let oversized = RECT { left: 0, top: 0, right: 1600, bottom: 900 };
+        assert_eq!(centered_position(oversized, work), (-1280, 0));
     }
 }
 
