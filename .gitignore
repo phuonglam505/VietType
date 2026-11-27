@@ -1,8 +1,38 @@
-/build/
-/out/
-/.vs/
-/CMakeUserPresets.json
-*.exe
-*.pdb
-*.obj
-*.user
+# Rust build output
+target/
+
+# CMake build output
+build/
+build-*/
+mac-build/
+mac-package/
+dmg-stage/
+packages/
+dist/
+*.dmg
+*.zip
+*.WebView2/
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Packages (build artifacts)
+*.deb
+*.rpm
+
+# Old VnKey decompiled binaries
+VNKEY/
+uvconv/
+x-unikey-1.0.4/
+vnkey-decompiled/
+parse_ede*.py
+*.docx
+~$*

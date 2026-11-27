@@ -1,0 +1,46 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+  "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleName</key>
+    <string>VietType</string>
+
+    <key>CFBundleDisplayName</key>
+    <string>VietType - Bộ gõ tiếng Việt</string>
+
+    <key>CFBundleIdentifier</key>
+    <string>com.github.phuonglam505.viettype</string>
+
+    <key>CFBundleVersion</key>
+    <string>2027.1.0</string>
+
+    <key>CFBundleShortVersionString</key>
+    <string>2027.1.0</string>
+
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+
+    <key>CFBundleSignature</key>
+    <string>????</string>
+
+    <key>CFBundleExecutable</key>
+    <string>VietType</string>
+
+    <key>CFBundleIconFile</key>
+    <string>VietType</string>
+
+    <!-- Background app with status bar icon (NSStatusItem) -->
+    <key>LSUIElement</key>
+    <true/>
+
+    <key>NSPrincipalClass</key>
+    <string>NSApplication</string>
+
+    <key>LSMinimumSystemVersion</key>
+    <string>11.0</string>
+
+    <key>NSHumanReadableCopyright</key>
+    <string>© 2026 marixdev. GPL-3.0-or-later.</string>
+</dict>
+</plist>

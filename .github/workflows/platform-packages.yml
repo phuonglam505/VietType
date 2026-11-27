@@ -1,0 +1,76 @@
+name: Build Linux and macOS packages
+
+on:
+  workflow_dispatch:
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    runs-on: ubuntu-24.04
+    container: debian:12
+    strategy:
+      fail-fast: false
+      matrix:
+        backend: [fcitx5, ibus]
+    steps:
+      - name: Install build dependencies
+        run: |
+          apt-get update
+          apt-get install -y --no-install-recommends git curl ca-certificates build-essential cmake pkg-config +            fcitx5 libfcitx5core-dev libfcitx5config-dev libfcitx5utils-dev fcitx5-modules-dev +            extra-cmake-modules gettext libibus-1.0-dev libglib2.0-dev
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+      - name: Test and build the engine
+        run: |
+          cargo test --locked --manifest-path vnkey-engine/Cargo.toml
+          cargo build --locked --release --manifest-path vnkey-engine/Cargo.toml
+      - name: Build and inspect the Debian package
+        env:
+          BACKEND: ${{ matrix.backend }}
+        run: |
+          cmake -S "vnkey-$BACKEND" -B "build-$BACKEND" +            -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr
+          cmake --build "build-$BACKEND" --parallel
+          cpack --config "build-$BACKEND/CPackConfig.cmake" -B packages -G DEB
+          dpkg-deb --info packages/*.deb
+          dpkg-deb --contents packages/*.deb
+      - uses: actions/upload-artifact@v4
+        with:
+          name: viettype-${{ matrix.backend }}-debian12-amd64
+          path: packages/*.deb
+          if-no-files-found: error
+
+  macos:
+    runs-on: macos-15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          targets: aarch64-apple-darwin,x86_64-apple-darwin
+      - name: Test and build the universal engine
+        run: |
+          cargo test --locked --manifest-path vnkey-engine/Cargo.toml
+          for arch in aarch64 x86_64; do
+            cargo build --locked --release --manifest-path vnkey-engine/Cargo.toml --target "$arch-apple-darwin"
+          done
+          mkdir -p mac-package
+          lipo -create +            vnkey-engine/target/aarch64-apple-darwin/release/libvnkey_engine.a +            vnkey-engine/target/x86_64-apple-darwin/release/libvnkey_engine.a +            -output "$PWD/mac-package/libvnkey_engine.a"
+      - name: Build VietType.app
+        run: |
+          cmake -S vnkey-macos -B mac-build -DCMAKE_BUILD_TYPE=Release +            -DCMAKE_OSX_ARCHITECTURES='arm64;x86_64' +            -DVIETTYPE_ENGINE_ARCHIVE="$PWD/mac-package/libvnkey_engine.a"
+          cmake --build mac-build --parallel
+          lipo -verify_arch arm64 x86_64 mac-build/VietType.app/Contents/MacOS/VietType
+          codesign --verify --deep --strict mac-build/VietType.app
+      - name: Create the disk image
+        run: |
+          mkdir -p dmg-stage
+          ditto mac-build/VietType.app dmg-stage/VietType.app
+          cp LICENSE dmg-stage/
+          ln -s /Applications dmg-stage/Applications
+          hdiutil create -volname VietType -srcfolder dmg-stage -format UDZO +            mac-package/VietType-v2027.01-macOS-Universal.dmg
+      - uses: actions/upload-artifact@v4
+        with:
+          name: viettype-macos-universal
+          path: mac-package/*.dmg
+          if-no-files-found: error

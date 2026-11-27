@@ -1,23 +1,48 @@
 cmake_minimum_required(VERSION 3.21)
-project(VietType VERSION 0.2.19 LANGUAGES CXX RC)
-set(win win32/VietType)
-add_executable(VietType WIN32
-    ${win}/main.cpp ${win}/AppDelegate.cpp ${win}/MainWindow.cpp ${win}/SystemOptions.cpp ${win}/SelfUpdate.cpp
-    ${win}/BaseDialog.cpp ${win}/ConvertToolDialog.cpp
-    ${win}/MacroDialog.cpp ${win}/VietType.cpp
-    ${win}/VietTypeHelper.cpp ${win}/VietTypeManager.cpp ${win}/SystemTrayHelper.cpp
-    ${win}/stdafx.cpp ${win}/VietType.rc
-    third_party/vnconv/byteio.cpp third_party/vnconv/charset.cpp third_party/vnconv/convert.cpp
-    third_party/vnconv/data.cpp third_party/vnconv/pattern.cpp engine/ClipboardEncoding.cpp
-    engine/ConvertTool.cpp engine/Engine.cpp engine/Macro.cpp
-    engine/SmartSwitchKey.cpp engine/Vietnamese.cpp)
-target_include_directories(VietType PRIVATE ${win} third_party/vnconv "${CMAKE_CURRENT_SOURCE_DIR}")
-target_compile_features(VietType PRIVATE cxx_std_17)
-math(EXPR viettype_build_number "${PROJECT_VERSION_MAJOR} * 10000 + ${PROJECT_VERSION_MINOR} * 100 + ${PROJECT_VERSION_PATCH}")
-target_compile_definitions(VietType PRIVATE UNICODE _UNICODE NOMINMAX WIN32 VIETTYPE_STATIC_UNIKEY _CRT_SECURE_NO_WARNINGS
-    "VIETTYPE_VERSION_DISPLAY=L\"${PROJECT_VERSION}\""
-    VIETTYPE_VERSION_NUMBER=${viettype_build_number})
-target_compile_options(VietType PRIVATE $<$<COMPILE_LANGUAGE:CXX>:/utf-8>)
-target_link_libraries(VietType PRIVATE comctl32 ole32 uuid shlwapi psapi advapi32 winhttp uxtheme windowsapp gdi32 bcrypt version)
+project(VietType LANGUAGES CXX)
+include(GNUInstallDirs)
 
-set_property(TARGET VietType PROPERTY MSVC_RUNTIME_LIBRARY "MultiThreaded$<$<CONFIG:Debug>:Debug>")
+if(NOT WIN32)
+    message(FATAL_ERROR "VietType requires Windows.")
+endif()
+
+find_package(Qt6 6.5 REQUIRED COMPONENTS Widgets)
+find_program(CARGO_EXECUTABLE cargo REQUIRED)
+qt_standard_project_setup()
+
+qt_add_executable(VietTypeSettings WIN32 settings/main.cpp)
+qt_add_resources(VietTypeSettings "viettype_icon"
+    PREFIX "/"
+    BASE "vnkey-windows"
+    FILES "vnkey-windows/v.ico"
+)
+qt_add_resources(VietTypeSettings "settings_indicators"
+    PREFIX "/"
+    BASE "settings"
+    FILES "settings/checkbox-checked.png"
+)
+target_compile_features(VietTypeSettings PRIVATE cxx_std_17)
+target_link_libraries(VietTypeSettings PRIVATE Qt6::Widgets)
+if(MSVC)
+    target_compile_options(VietTypeSettings PRIVATE /utf-8)
+endif()
+
+set(engine_target_dir "${CMAKE_CURRENT_BINARY_DIR}/cargo")
+set(engine_profile "$<IF:$<CONFIG:Debug>,dev,release>")
+set(engine_output "$<IF:$<CONFIG:Debug>,debug,release>")
+add_custom_target(VietTypeEngine ALL
+    COMMAND "${CARGO_EXECUTABLE}" build --locked --profile "${engine_profile}"
+            --manifest-path "${CMAKE_CURRENT_SOURCE_DIR}/vnkey-windows/Cargo.toml"
+            --target-dir "${engine_target_dir}"
+    COMMAND "${CMAKE_COMMAND}" -E copy_if_different
+            "${engine_target_dir}/${engine_output}/VietType.exe"
+            "$<TARGET_FILE_DIR:VietTypeSettings>/VietType.exe"
+    VERBATIM
+)
+add_dependencies(VietTypeEngine VietTypeSettings)
+
+install(TARGETS VietTypeSettings RUNTIME DESTINATION "${CMAKE_INSTALL_BINDIR}")
+install(PROGRAMS "${engine_target_dir}/${engine_output}/VietType.exe" DESTINATION "${CMAKE_INSTALL_BINDIR}")
+install(FILES LICENSE DESTINATION .)
+qt_generate_deploy_app_script(TARGET VietTypeSettings OUTPUT_SCRIPT deploy_settings)
+install(SCRIPT "${deploy_settings}")
