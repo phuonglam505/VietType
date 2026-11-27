@@ -35,6 +35,10 @@ sudo apt install ./viettype-fcitx5_2027.1.0_amd64.deb
 
 ## Biên dịch
 
+- `viettype-engine/` chứa lõi gõ Rust dùng chung.
+- `viettype-windows/` và `settings/` chứa ứng dụng Windows và giao diện Qt.
+- `viettype-fcitx5/`, `viettype-ibus/` và `viettype-macos/` chứa phần tích hợp từng nền tảng.
+
 ### Windows
 
 Cần MSVC x64 và Windows SDK, Rust MSVC, CMake 3.21 trở lên và Qt Widgets 6.5 trở lên cho MSVC x64. Thay đường dẫn Qt bằng đường dẫn thực tế:
@@ -55,7 +59,7 @@ Trong kho GitHub, mở **Actions → Build Linux and macOS packages → Run work
 Chạy bài kiểm thử lõi gõ trên máy có Rust:
 
 ```sh
-cargo test --locked --manifest-path vnkey-engine/Cargo.toml
+cargo test --locked --manifest-path viettype-engine/Cargo.toml
 ```
 
 ## Giấy phép và liên hệ

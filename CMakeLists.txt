@@ -13,8 +13,8 @@ qt_standard_project_setup()
 qt_add_executable(VietTypeSettings WIN32 settings/main.cpp)
 qt_add_resources(VietTypeSettings "viettype_icon"
     PREFIX "/"
-    BASE "vnkey-windows"
-    FILES "vnkey-windows/v.ico"
+    BASE "viettype-windows"
+    FILES "viettype-windows/v.ico"
 )
 qt_add_resources(VietTypeSettings "settings_indicators"
     PREFIX "/"
@@ -32,7 +32,7 @@ set(engine_profile "$<IF:$<CONFIG:Debug>,dev,release>")
 set(engine_output "$<IF:$<CONFIG:Debug>,debug,release>")
 add_custom_target(VietTypeEngine ALL
     COMMAND "${CARGO_EXECUTABLE}" build --locked --profile "${engine_profile}"
-            --manifest-path "${CMAKE_CURRENT_SOURCE_DIR}/vnkey-windows/Cargo.toml"
+            --manifest-path "${CMAKE_CURRENT_SOURCE_DIR}/viettype-windows/Cargo.toml"
             --target-dir "${engine_target_dir}"
     COMMAND "${CMAKE_COMMAND}" -E copy_if_different
             "${engine_target_dir}/${engine_output}/VietType.exe"

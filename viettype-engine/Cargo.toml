@@ -1,0 +1,13 @@
+[package]
+name = "viettype-engine"
+version = "1.0.3"
+edition = "2021"
+description = "Cross-platform Vietnamese input engine (VietType)"
+license = "GPL-3.0-or-later"
+
+[lib]
+name = "viettype_engine"
+crate-type = ["lib", "staticlib"]
+
+[dependencies]
+once_cell = "1"

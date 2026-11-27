@@ -24,13 +24,13 @@ jobs:
       - uses: dtolnay/rust-toolchain@stable
       - name: Test and build the engine
         run: |
-          cargo test --locked --manifest-path vnkey-engine/Cargo.toml
-          cargo build --locked --release --manifest-path vnkey-engine/Cargo.toml
+          cargo test --locked --manifest-path viettype-engine/Cargo.toml
+          cargo build --locked --release --manifest-path viettype-engine/Cargo.toml
       - name: Build and inspect the Debian package
         env:
           BACKEND: ${{ matrix.backend }}
         run: |
-          cmake -S "vnkey-$BACKEND" -B "build-$BACKEND" -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr
+          cmake -S "viettype-$BACKEND" -B "build-$BACKEND" -DCMAKE_BUILD_TYPE=Release -DCMAKE_INSTALL_PREFIX=/usr
           cmake --build "build-$BACKEND" --parallel
           cpack --config "build-$BACKEND/CPackConfig.cmake" -B packages -G DEB
           dpkg-deb --info packages/*.deb
@@ -50,15 +50,15 @@ jobs:
           targets: aarch64-apple-darwin,x86_64-apple-darwin
       - name: Test and build the universal engine
         run: |
-          cargo test --locked --manifest-path vnkey-engine/Cargo.toml
+          cargo test --locked --manifest-path viettype-engine/Cargo.toml
           for arch in aarch64 x86_64; do
-            cargo build --locked --release --manifest-path vnkey-engine/Cargo.toml --target "$arch-apple-darwin"
+            cargo build --locked --release --manifest-path viettype-engine/Cargo.toml --target "$arch-apple-darwin"
           done
           mkdir -p mac-package
-          lipo -create vnkey-engine/target/aarch64-apple-darwin/release/libvnkey_engine.a vnkey-engine/target/x86_64-apple-darwin/release/libvnkey_engine.a -output "$PWD/mac-package/libvnkey_engine.a"
+          lipo -create viettype-engine/target/aarch64-apple-darwin/release/libviettype_engine.a viettype-engine/target/x86_64-apple-darwin/release/libviettype_engine.a -output "$PWD/mac-package/libviettype_engine.a"
       - name: Build VietType.app
         run: |
-          cmake -S vnkey-macos -B mac-build -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES='arm64;x86_64' -DVIETTYPE_ENGINE_ARCHIVE="$PWD/mac-package/libvnkey_engine.a"
+          cmake -S viettype-macos -B mac-build -DCMAKE_BUILD_TYPE=Release -DCMAKE_OSX_ARCHITECTURES='arm64;x86_64' -DVIETTYPE_ENGINE_ARCHIVE="$PWD/mac-package/libviettype_engine.a"
           cmake --build mac-build --parallel
           lipo mac-build/VietType.app/Contents/MacOS/VietType -verify_arch arm64 x86_64
           codesign --verify --deep --strict mac-build/VietType.app

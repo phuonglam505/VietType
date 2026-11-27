@@ -28,7 +28,7 @@ Thumbs.db
 *.deb
 *.rpm
 
-# Old VnKey decompiled binaries
+# Local legacy reference files
 VNKEY/
 uvconv/
 x-unikey-1.0.4/
