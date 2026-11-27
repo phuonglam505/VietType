@@ -1,6 +1,6 @@
 # VietType — gõ tiếng Việt
 
-VietType là bộ gõ tiếng Việt mã nguồn mở phát triển từ [VnKey](https://vnkey.app/). Bản **v2027.01** dành cho Windows dùng lõi Rust và cửa sổ cài đặt C++/Qt 6. Bản Windows hỗ trợ Telex, VNI, gõ tắt, kiểm tra chính tả, chuyển mã Clipboard và cấu hình theo ứng dụng.
+VietType là bộ gõ tiếng Việt mã nguồn mở phát triển từ [VnKey](https://vnkey.app/). Bản **v2027.01** dành cho Windows dùng lõi Rust. Bản Windows hỗ trợ Telex, VNI, gõ tắt, kiểm tra chính tả, chuyển mã Clipboard và cấu hình theo ứng dụng.
 
 ![Cửa sổ cài đặt VietType v2027.01 trên Windows](docs/screenshots/windows-settings.png)
 
