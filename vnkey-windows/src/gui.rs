@@ -118,10 +118,10 @@ fn build_html(im: i32, cs: i32, spell: bool, free: bool, modern: bool,
 
     let body = format!(r##"
 <div class="container">
-  <div style="display:flex;align-items:center;gap:10px">
-    <div style="width:36px;height:36px;background:#78213f;border-radius:8px;display:grid;place-items:center;color:#fff;font-weight:700">V</div>
-    <strong>VietType</strong>
-    <span style="margin-left:auto;color:var(--text-dim)">{ver}</span>
+  <div style="display:flex;align-items:center;gap:11px;background:#78213f;color:#fff;padding:9px 11px;border-radius:7px">
+    <div aria-hidden="true" style="width:34px;height:34px;border:1px solid #d296ac;border-radius:6px;display:grid;place-items:center;font-weight:700;font-size:16px;flex-shrink:0">V</div>
+    <strong style="font-size:17px;line-height:1.2">VietType - bộ gõ tiếng Việt</strong>
+    <span style="margin-left:auto;color:#ffe4ee;white-space:nowrap">{ver}</span>
   </div>
     <div class="row" style="gap:8px">
       <div class="group">
@@ -295,7 +295,7 @@ fn run_config() {
         return;
     }
     let html = build_html(im, cs, spell, free, modern, ede, macro_en, auto_start, run_admin);
-    webview::run_webview(&format!("VietType {VERSION}"), 520.0, 560.0, &html, None, handle_ipc);
+    webview::run_webview(&format!("VietType {VERSION}"), 520.0, 580.0, &html, None, handle_ipc);
 }
 
 fn run_qt_settings(initial: &serde_json::Value) -> bool {
